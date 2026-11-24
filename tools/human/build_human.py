@@ -61,6 +61,7 @@ HAIR_PRESETS = {
     'C': dict(thr_c=0.027, thr_s=0.036, push=0.0035, crown=1.8, smooth=2),   # ぱっつん前髪
     'D': dict(shell=False, edge=0.008, face_t=2.0),                    # 塗りだけ
 }
+NIPPLE = (2.0, 5.4, 28)   # 骨盤からの高さ(dm)の範囲と、ならす回数(乳首の消去用)
 CHEST = (1.6, 4.4, 30)   # 骨盤からの高さ(dm)の範囲と、基準にする前方位置のパーセンタイル(女性の胸)
 GROIN = (2.2, 0.2, 62)   # 骨盤の下(dm)の範囲と、基準にする前方位置のパーセンタイル
 DRAPE_PLANE = [None, None]   # 上着の基準面(y)と胸の頂点の高さ(z)。ネクタイの位置合わせに使う
@@ -210,8 +211,8 @@ def main():
         print('groin zone', int(zone.sum()), 'ref', round(ref, 3), 'max z', round(float(V[zone, 2].max()), 3))
         V[:, 2] -= np.maximum(0, V[:, 2] - ref) * wg * 0.9
 
-    if c['gender'] < 0.5 and c.get('outer_kind') == 'suit':
-        # 胸の張り出しを体そのものからならす(服を着た輪郭にする)。後ろへは動かさず、前に出た分だけ削る
+    if False:
+        # (旧)胸の張り出しを体そのものからならす。体が板のようになるので使わない(服を着た輪郭にする)。後ろへは動かさず、前に出た分だけ削る
         zone_c = (np.abs(V[:, 0]) < 2.4) & (V[:, 1] > ypel + CHEST[0]) & (V[:, 1] < ypel + CHEST[1]) & (V[:, 2] > 0)
         zone_c[13380:] = False
         if zone_c.any():
@@ -219,6 +220,25 @@ def main():
             wxc = np.clip(1 - (np.abs(V[:, 0]) - 1.7) / 0.7, 0, 1)
             wyc = np.clip((V[:, 1] - (ypel + CHEST[0])) / 0.4, 0, 1) * np.clip(((ypel + CHEST[1]) - V[:, 1]) / 0.4, 0, 1)
             V[:, 2] -= np.maximum(0, V[:, 2] - refc) * wxc * wyc * zone_c * 0.85
+
+    # 乳首だけを消す:胸まわりの体のメッシュを局所的にならす(大胸筋やふくらみの大きな形は残す)
+    nbv = {}
+    for vi_, _ in groups['body']:
+        for k_ in range(len(vi_)):
+            a_, b_ = vi_[k_], vi_[(k_ + 1) % len(vi_)]
+            nbv.setdefault(a_, set()).add(b_); nbv.setdefault(b_, set()).add(a_)
+    zc = (np.abs(V[:, 0]) < 2.0) & (V[:, 1] > ypel + NIPPLE[0]) & (V[:, 1] < ypel + NIPPLE[1]) & (V[:, 2] > 0)
+    zc[13380:] = False
+    idc = [i for i in np.where(zc)[0] if i in nbv]
+    if idc:
+        wx_ = np.clip(1 - (np.abs(V[:, 0]) - 1.4) / 0.5, 0, 1); wy_ = np.clip((V[:, 1] - (ypel + NIPPLE[0])) / 0.25, 0, 1) * np.clip(((ypel + NIPPLE[1]) - V[:, 1]) / 0.25, 0, 1)
+        wc = (wx_ * wy_)[idc][:, None]
+        nbl_ = [list(nbv[i]) for i in idc]
+        for it_ in range(NIPPLE[2] * 2):
+            lam_ = 0.6 if it_ % 2 == 0 else -0.63
+            avg_ = np.array([V[l_].mean(0) for l_ in nbl_])
+            V[idc] = V[idc] + lam_ * wc * (avg_ - V[idc])
+        print('smoothed chest verts', len(idc))
 
     # 骨の位置
     rig = json.load(open(os.path.join(mp, 'rigs', 'standard', 'rig.game_engine.json')))
@@ -511,7 +531,7 @@ def main():
             return cz < neck_cut
         return P[vi, 2].min() > hz - 0.012
     top_faces = [(vi, ti) for vi, ti in body_only if top_ok(vi)]
-    shell('Top', [(vi, ti, 'Top') for vi, ti in top_faces], 0.018, c['top'], 0.9, smooth=60, drape='full' if is_suit else True, hem=shirt_hem)
+    shell('Top', [(vi, ti, 'Top') for vi, ti in top_faces], 0.018, c['top'], 0.9, smooth=60, drape=False, hem=shirt_hem)
     # 羽織りもの:前開きの上着(open)/エプロン(apron)
     ok = c.get('outer_kind')
     if ok:
@@ -529,7 +549,7 @@ def main():
                 m = cen(vi)
                 return m[1] < 0 and m[2] > v0 and abs(m[0]) < 0.008 + (m[2] - v0) * (0.20 if c['gender'] < 0.5 else 0.30)
             jk = [(vi, ti, 'Outer') for vi, ti in body_only if jacket_ok(vi) and not in_v(vi)]
-            shell('Outer', jk, 0.036, c['outer'], 0.9, smooth=80, drape='full', hem=jhem)
+            shell('Outer', jk, 0.036, c['outer'], 0.9, smooth=80, drape=False, hem=jhem)
             if c.get('tie'):
                 # ネクタイ:V字の中、シャツの前に貼る細長い板(結び目+剣先)
                 tie_mat = make_mat('Tie', c['tie'], 0.55); tie_mat.use_backface_culling = False
@@ -559,12 +579,12 @@ def main():
         elif ok == 'open':
             outer = [(vi, ti, 'Outer') for vi, ti in top_faces
                      if not (abs(cen(vi)[0]) < 0.05 and cen(vi)[1] < 0 and cen(vi)[2] < neck_cut - 0.02)]
-            shell('Outer', outer, 0.032, c['outer'], 0.85, smooth=40, drape=True)
+            shell('Outer', outer, 0.032, c['outer'], 0.85, smooth=40, drape=False)
         else:
             apron = [(vi, ti, 'Outer') for vi, ti in body_only
                      if dom[vi[0]] in ('spine_01', 'spine_02', 'spine_03', 'pelvis', 'thigh_l', 'thigh_r')
                      and abs(cen(vi)[0]) < 0.14 and cen(vi)[1] < -0.02 and pz - 0.06 < cen(vi)[2] < neck_cut - 0.1]
-            shell('Outer', apron, 0.045, c['outer'], 0.8, smooth=30, drape=True)
+            shell('Outer', apron, 0.045, c['outer'], 0.8, smooth=30, drape=False)
     # ズボン:タイツ補助メッシュのうち足首より上
     ank = min(bones['foot_l']['head'][2], bones['foot_r']['head'][2])
     waist = bones['pelvis']['head'][2] + 0.09
