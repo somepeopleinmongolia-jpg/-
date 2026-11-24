@@ -45,7 +45,7 @@ CHARS = {
     'friend': C(age=0.52, muscle=0.55, weight=0.5, height=0.56, top=(0.52, 0.54, 0.50),
                 pants=(0.18, 0.24, 0.36), shoes=(0.86, 0.86, 0.84), brow=0.6),
     'lover': C(gender=0.0, age=0.52, muscle=0.40, weight=0.40, height=0.45, hair_style='bob', skin=(0.93, 0.71, 0.58),
-               hair=(0.20, 0.11, 0.07), top=(0.88, 0.60, 0.64), skirt=(0.22, 0.27, 0.40), pants=(0.09, 0.09, 0.12),
+               hair=(0.20, 0.11, 0.07), hair_cfg={'bob_len': 0.085}, top=(0.88, 0.60, 0.64), skirt=(0.22, 0.27, 0.40), pants=(0.09, 0.09, 0.12),
                shoes=(0.85, 0.82, 0.78), brow=0.32, blush=0.40, blush_rgb=(0.95, 0.50, 0.52), lipc=(0.95, 0.48, 0.50),
                liner=0.85, iris_t=0.80, iris=(0.36, 0.22, 0.14),
                face={'eyes/l-eye-scale-incr': 0.55, 'eyes/l-eye-height1-incr': 0.45, 'eyes/l-eye-height2-incr': 0.25,
@@ -63,7 +63,7 @@ CHARS['professor'] = CHARS['prof_normal']
 
 # 髪の作り方。thr_c/thr_s=生え際の高さ(目の上から、中央/こめかみ。小さいほど前髪が下がる)、edge=生え際のぼかし、
 # face_t=殻にする面の重み、push=頭皮からの厚み、crown=頭頂の盛り、strand=毛並みの濃淡、paint=肌に髪色を塗る強さ
-HAIR_DEFAULT = dict(thr_c=0.040, thr_s=0.030, edge=0.0035, face_t=0.5, push=0.0035, crown=2.4, taper=0, shell=True, strand=0.30, paint=1.0, smooth=3, bob_scale=1.0)
+HAIR_DEFAULT = dict(thr_c=0.040, thr_s=0.030, edge=0.0035, face_t=0.5, push=0.0035, crown=2.4, taper=0, shell=True, strand=0.30, paint=1.0, smooth=3, bob_scale=1.0, bob_len=0.0)
 HAIR_WOMEN = dict(thr_c=0.027, thr_s=0.036, push=0.0035, crown=1.8, smooth=2, bob_scale=0.6)   # ぱっつん前髪のおかっぱ
 HAIR_PRESETS = {
     'A': dict(),                                                       # 頭皮ぴったり
@@ -689,7 +689,7 @@ def main():
         z_top = float(hz.max())
         front_v = [i for i in hv if P[i, 1] < eyeC[1] - 0.02]
         z_chin = float(P[front_v, 2].min()) if front_v else eyeC[2] - 0.14
-        z_bot = z_chin + 0.015
+        z_bot = z_chin + 0.015 - HC['bob_len']
         z_ear = eyeC[2] - 0.01
         rows_z = list(np.arange(z_top - 0.035, z_bot, -0.014)) + [z_bot]
         ring = []
@@ -704,7 +704,11 @@ def main():
             ry = float(np.percentile(np.abs(pts[:, 1] - cy), 92))
             t = np.clip((z_ear - zk) / max(z_ear - z_bot, 1e-3), 0, 1)
             off = float(os.environ.get('BOB_SCALE', HC['bob_scale'])) * (0.017 + 0.013 * np.sin(np.clip((z_top - zk) / 0.08, 0, 1) * np.pi / 2))   # 頭の上は薄く、横は厚く
-            if zk < z_ear:
+            if zk < z_ear and HC['bob_len'] > 0.02:
+                # 長め:肩に向かって少し広がり、毛先で内側に巻く。首のうしろへ少し寄る
+                off = off * (1 + 0.45 * np.sin(np.pi * min(t * 1.15, 1.0))) - 0.010 * max(0.0, t - 0.82) / 0.18
+                cy = cy + 0.028 * t
+            elif zk < z_ear:
                 off = off * (1 - 0.45 * t) - 0.006 * t       # すそは少しすぼめる(内巻き)
             ring.append((cx, cy, rx + off, ry + off, zk))
         # 段ごとの幅のばらつきをならす(輪郭が波打たないように)
