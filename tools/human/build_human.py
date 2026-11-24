@@ -45,7 +45,8 @@ CHARS = {
     'friend': C(age=0.52, muscle=0.55, weight=0.5, height=0.56, top=(0.52, 0.54, 0.50),
                 pants=(0.18, 0.24, 0.36), shoes=(0.86, 0.86, 0.84), brow=0.6),
     'lover': C(gender=0.0, age=0.51, muscle=0.45, weight=0.42, height=0.45, hair_style='bob', skin=(0.87, 0.69, 0.57),
-               hair=(0.12, 0.08, 0.06), top=(0.86, 0.66, 0.68), outer=(0.93, 0.89, 0.81), outer_kind='open', pants=(0.70, 0.64, 0.55), shoes=(0.85, 0.82, 0.78), brow=0.4),
+               hair=(0.12, 0.08, 0.06), top=(0.88, 0.60, 0.64), skirt=(0.22, 0.27, 0.40), pants=(0.09, 0.09, 0.12),
+               shoes=(0.85, 0.82, 0.78), brow=0.4),
     'mother': C(gender=0.0, age=0.8, muscle=0.4, weight=0.66, height=0.38, hair_style='bob', hair_gray=0.3,
                 top=(0.72, 0.56, 0.26), outer=(0.80, 0.36, 0.34), outer_kind='apron', pants=(0.36, 0.30, 0.25), brow=0.4),
 }
@@ -592,6 +593,11 @@ def main():
     pants = [(vi, ti) for vi, ti in body_only if all(dom[i] in legset for i in vi) and ank + 0.02 < P[vi, 2].mean() < ((pz - 0.045 + 0.025) if is_suit else (shirt_hem + 0.06))]
     suit = c.get('outer_kind') == 'suit'
     shell('Pants', [(vi, ti, 'Pants') for vi, ti in pants], 0.016 if suit else 0.012, c['pants'], 0.85, smooth=30 if suit else 8)
+
+    if c.get('skirt'):
+        # スカート:補助メッシュ(helper-skirt)を腰から膝上まで。下は黒いタイツ(ズボンの殻)
+        sk = [(vi, ti, 'Skirt') for vi, ti in groups['helper-skirt']]
+        shell('Skirt', sk, 0.022, c['skirt'], 0.85, smooth=14)
 
     # 服の下に隠れる体の面は消す(突き抜け防止)。開口部のまわり 2 リングは残す
     def interior(fl, rings=2):
