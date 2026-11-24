@@ -48,7 +48,7 @@ const BOT=`window.__play=async function(strategy){
         if(sub){click(sub);continue}
         a=s.san<25?'sleep':R()<0.55?'write':pick(['read','exp','ask','sleep']);
       }else if(strategy==='sensible'){
-        if(sub&&(s.q>=50||s.day>=9)){click(sub);continue}
+        if(sub&&((s.q>=70&&s.trust>=60)||s.day>=9)){click(sub);continue}
         if(s.san<35)a='sleep';
         else if(s.q<45&&R()<0.45)a=pick(['read','exp']);
         else if(s.trust<55&&R()<0.25)a='ask';
