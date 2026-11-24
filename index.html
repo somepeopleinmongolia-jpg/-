@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>卒論ギリギリシミュレーター</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Shippori+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* 原稿用紙の上で赤ペンが走る。1カラムの紙面、固定HUD、ステージは常に1枚だけ */
+  --paper:#f1f7f2;
+  --grid:#d3e5d9;
+  --card:#fffffb;
+  --ink:#13171d;
+  --muted:#5a6a62;
+  --pen:#e23a2e;
+  --marker:#ffe34d;
+  --f-display:"Dela Gothic One","Hiragino Sans","Yu Gothic","Noto Sans JP",sans-serif;
+  --f-body:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic","Noto Sans JP",sans-serif;
+  --f-doc:"Shippori Mincho","Hiragino Mincho ProN","Yu Mincho",serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background-color:var(--paper);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:24px 24px;
+  color:var(--ink);color-scheme:light;
+  font-family:var(--f-body);font-weight:500;font-size:16px;line-height:1.6;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation;
+}
+#app{max-width:480px;margin:0 auto;padding:0 16px 48px;min-height:100vh}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,summary:focus-visible,a:focus-visible{outline:3px solid var(--pen);outline-offset:2px}
+h1,h2,h3,p{margin:0}
+h2,h3{text-wrap:balance}
+
+/* buttons */
+.btn{display:block;width:100%;border:2.5px solid var(--ink);background:var(--card);padding:13px 16px;border-radius:10px;font-weight:900;font-size:16px;text-align:left;box-shadow:4px 4px 0 var(--ink);transition:transform .08s,box-shadow .08s}
+.btn:active{transform:translate(3px,3px);box-shadow:1px 1px 0 var(--ink)}
+.btn.primary{background:var(--ink);color:var(--paper);box-shadow:4px 4px 0 var(--pen);text-align:center;font-size:18px;padding:15px 16px}
+.btn.primary:active{box-shadow:1px 1px 0 var(--pen)}
+.btn.ghost{box-shadow:none;background:transparent;text-align:center;font-size:15px;padding:11px 14px}
+.btn.ghost:active{transform:none;background:var(--card)}
+.btn.marker{background:var(--marker)}
+.btn[disabled]{opacity:.5;pointer-events:none}
+.stack{display:flex;flex-direction:column;gap:12px}
+
+/* cards */
+.card{background:var(--card);border:2.5px solid var(--ink);border-radius:12px;box-shadow:5px 5px 0 var(--ink);padding:16px;display:flex;flex-direction:column;gap:12px}
+.tag{align-self:flex-start;display:inline-block;font-size:12px;font-weight:900;letter-spacing:.08em;background:var(--ink);color:var(--paper);padding:2px 10px;border-radius:99px}
+.ev-title{font-family:var(--f-display);font-size:23px;line-height:1.3;font-weight:400}
+.ev-body{color:var(--muted);font-size:15px}
+.res-text{font-size:17px;font-weight:700;line-height:1.65}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-block;padding:1px 9px;border:2px solid var(--ink);border-radius:6px;font-weight:900;font-size:13px;font-variant-numeric:tabular-nums;background:var(--card)}
+.chip.good{background:var(--marker)}
+.chip.bad{background:var(--pen);border-color:var(--pen);color:#fff}
+.enter{animation:rise .22s ease-out}
+@keyframes rise{from{opacity:.01;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* title */
+.title{padding-top:20px;display:flex;flex-direction:column;gap:20px}
+.filetab{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:var(--muted);border:2px solid var(--ink);background:var(--card);border-radius:8px;padding:5px 10px;align-self:flex-start;max-width:100%}
+.filetab i{width:10px;height:10px;border-radius:2px;background:#2b579a;flex:none}
+.filetab span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hero{position:relative;padding-top:4px}
+.hero h1{font-family:var(--f-display);font-weight:400;line-height:1;display:flex;flex-direction:column;align-items:flex-start;gap:2px}
+.hero .t1{font-size:clamp(60px,20vw,92px)}
+.hero .t2{font-size:clamp(60px,20vw,92px);background:linear-gradient(transparent 64%,var(--marker) 64%);padding-right:6px}
+.hero .t3{font-size:clamp(20px,6.4vw,30px);letter-spacing:.14em;background:var(--ink);color:var(--paper);padding:3px 12px;margin-top:8px}
+.maru{position:absolute;right:2px;top:6px;width:76px;height:76px;border:4px solid var(--pen);border-radius:50%;color:var(--pen);display:grid;place-items:center;font-family:var(--f-display);font-size:34px;transform:rotate(12deg)}
+.deadline{display:flex;align-items:baseline;gap:8px;font-weight:900}
+.deadline b{font-family:var(--f-display);font-weight:400;font-size:38px;color:var(--pen);line-height:1}
+.how{font-size:14.5px;color:var(--muted);display:flex;flex-direction:column;gap:2px}
+.how b{color:var(--ink)}
+label.lbl{font-size:13px;font-weight:900;display:block;margin-bottom:6px}
+.inp{width:100%;font:inherit;font-size:16px;font-weight:700;border:2.5px solid var(--ink);border-radius:10px;padding:12px 14px;background:var(--card);color:var(--ink)}
+.inp::placeholder{color:#8a9a92;font-weight:500}
+.coll-note{font-size:13px;color:var(--muted);text-align:center}
+
+/* HUD */
+.hud{position:sticky;top:0;z-index:5;margin:0 -16px 16px;padding:8px 16px 10px;background:var(--card);border-bottom:2.5px solid var(--ink);display:flex;flex-direction:column;gap:6px}
+.hud-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.fname{font-size:12px;font-weight:700;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;gap:6px;align-items:center;min-width:0}
+.fname i{width:9px;height:9px;border-radius:2px;background:#2b579a;flex:none}
+.snd{border:2px solid var(--ink);background:var(--card);border-radius:6px;font-size:11px;font-weight:900;padding:1px 8px}
+.hud-main{display:flex;justify-content:space-between;align-items:flex-end}
+.count{display:flex;align-items:baseline;gap:8px}
+.count small{font-size:12px;font-weight:900;color:var(--muted)}
+.count b{font-family:var(--f-display);font-weight:400;font-size:34px;line-height:1;color:var(--pen)}
+.ap{display:flex;gap:5px;align-items:center;font-size:12px;font-weight:900}
+.ap i{width:16px;height:16px;border-radius:50%;border:2.5px solid var(--ink);background:var(--marker)}
+.ap i.off{background:transparent}
+.chars{display:flex;align-items:baseline;gap:6px}
+.chars b{font-family:var(--f-display);font-weight:400;font-size:26px;line-height:1.1;font-variant-numeric:tabular-nums}
+.chars span{font-size:13px;font-weight:700;color:var(--muted)}
+.segs{display:grid;grid-template-columns:repeat(20,1fr);gap:2px;height:12px}
+.segs i{border:1.5px solid var(--ink);background:transparent;border-radius:2px}
+.segs i.on{background:var(--ink)}
+.meters{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.m{display:grid;grid-template-columns:1fr auto;column-gap:4px;row-gap:2px;font-size:11.5px;font-weight:900}
+.m em{grid-column:1 / -1;display:block;height:9px;border:2px solid var(--ink);border-radius:5px;overflow:hidden;background:transparent}
+.m em i{display:block;height:100%;width:50%;background:var(--marker);border-right:2px solid var(--ink);transition:width .3s}
+.m b{font-variant-numeric:tabular-nums}
+.m.low em i{background:var(--pen)}
+body.low .count b{animation:shake .4s infinite}
+body.low #m-san span{color:var(--pen)}
+@keyframes shake{0%,100%{transform:translate(0)}25%{transform:translate(-1.5px,1px)}75%{transform:translate(1.5px,-1px)}}
+
+/* actions */
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.act{display:flex;flex-direction:column;gap:2px;align-items:flex-start}
+.act .em{font-size:26px;line-height:1.2}
+.act .nm{font-size:17px}
+.act .ht{font-size:12px;font-weight:500;color:var(--muted);line-height:1.4}
+.act.wide{grid-column:1 / -1;flex-direction:row;align-items:center;gap:12px}
+.act.wide .tx{display:flex;flex-direction:column}
+.sub{font-size:13px;font-weight:700;color:var(--muted);text-align:center}
+
+/* frenzy */
+.timer{height:12px;border:2.5px solid var(--ink);border-radius:7px;overflow:hidden}
+.timer i{display:block;height:100%;background:var(--pen);transform-origin:left;transform:scaleX(1)}
+.doc{height:132px;overflow:hidden;border:2px solid var(--ink);border-radius:8px;padding:8px 10px;font-family:var(--f-doc);font-size:15px;font-weight:500;line-height:24px;letter-spacing:.06em;word-break:break-all;background-color:var(--card);background-image:repeating-linear-gradient(transparent 0 23px,var(--grid) 23px 24px);background-attachment:local}
+.tapbtn{position:relative;overflow:hidden;width:100%;height:130px;border:3px solid var(--ink);border-radius:14px;background:var(--pen);color:#fff;font-family:var(--f-display);font-size:30px;box-shadow:5px 5px 0 var(--ink);user-select:none;-webkit-user-select:none;touch-action:manipulation}
+.tapbtn:active{transform:translate(3px,3px);box-shadow:2px 2px 0 var(--ink)}
+.tapbtn[disabled]{background:var(--muted)}
+.pop{position:absolute;pointer-events:none;font-family:var(--f-display);font-size:18px;color:var(--marker);text-shadow:1px 1px 0 var(--ink);animation:pop .6s ease-out forwards}
+@keyframes pop{from{opacity:1;transform:translate(-50%,0)}to{opacity:0;transform:translate(-50%,-46px)}}
+.fz-count{display:flex;align-items:baseline;justify-content:center;gap:4px;font-weight:900}
+.fz-count b{font-family:var(--f-display);font-weight:400;font-size:40px;line-height:1;font-variant-numeric:tabular-nums}
+
+/* result */
+.result{padding-top:20px;display:flex;flex-direction:column;gap:16px}
+.share{position:relative;gap:10px;background-color:var(--card);background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:22px 22px;padding:18px 16px 16px}
+.share .sc-head{font-size:12px;font-weight:900;letter-spacing:.1em;color:var(--muted);padding-right:80px}
+.share .sc-theme{font-family:var(--f-doc);font-weight:700;font-size:16px;padding-right:80px;word-break:break-all}
+.stamp{position:absolute;right:14px;top:14px;width:72px;height:72px;border:4.5px solid var(--pen);border-radius:50%;color:var(--pen);display:grid;place-items:center;font-family:var(--f-display);font-size:38px;transform:rotate(-12deg);background:rgba(255,255,251,.6);animation:slam .5s cubic-bezier(.2,1.4,.4,1) .15s both}
+@keyframes slam{from{opacity:0;transform:rotate(-30deg) scale(2.6)}to{opacity:1;transform:rotate(-12deg) scale(1)}}
+.sc-title{font-family:var(--f-display);font-weight:400;font-size:30px;line-height:1.2;margin-top:6px}
+.sc-rank{display:inline-block;align-self:flex-start;background:var(--marker);border:2px solid var(--ink);border-radius:6px;font-weight:900;font-size:13px;padding:0 8px}
+.sc-desc{font-size:15.5px;font-weight:700}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:6px 14px;margin:2px 0}
+.stats div{display:flex;justify-content:space-between;gap:6px;border-bottom:2px solid var(--ink);padding-bottom:2px;font-size:14px}
+.stats dt{font-weight:700;color:var(--muted)}
+.stats dd{margin:0;font-weight:900;font-variant-numeric:tabular-nums}
+.sc-log{font-size:20px;line-height:1.5;letter-spacing:.06em;white-space:pre-wrap}
+.sc-tag{font-size:12px;font-weight:900;color:var(--pen)}
+.share-btns{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.share-btns a.btn,.share-btns button.btn{text-align:center;text-decoration:none;color:var(--ink)}
+.share-btns .full{grid-column:1 / -1}
+details.box summary{font-size:13px;font-weight:700;color:var(--muted);cursor:pointer}
+details.box textarea{width:100%;height:150px;margin-top:8px;font:inherit;font-size:14px;border:2px solid var(--ink);border-radius:8px;padding:8px;background:var(--card);color:var(--ink)}
+
+/* mock thesis */
+[hidden]{display:none!important}
+.paper{font-family:var(--f-doc);font-weight:500;font-size:15.5px;line-height:1.95;letter-spacing:.03em;white-space:pre-wrap;word-break:break-word;border:2px solid var(--ink);border-radius:8px;padding:14px 14px 16px;background-color:var(--card);background-image:repeating-linear-gradient(transparent 0 29px,var(--grid) 29px 30px);background-attachment:local;max-height:460px;overflow:auto}
+.note{font-size:12.5px;color:var(--muted);line-height:1.5}
+.th-msg{font-size:13px;font-weight:700;color:var(--pen)}
+
+/* collection */
+.coll{display:flex;flex-direction:column;gap:8px}
+.coll h3{font-family:var(--f-display);font-weight:400;font-size:20px}
+.coll ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.coll li{border:2px solid var(--ink);border-radius:8px;padding:8px 10px;background:var(--card);display:flex;gap:10px;align-items:flex-start}
+.coll li.lock{background:transparent;border-style:dashed;color:var(--muted)}
+.coll .ce{font-size:24px;line-height:1.2}
+.coll .cn{font-weight:900;font-size:15px}
+.coll .cd{font-size:13px;color:var(--muted);line-height:1.45}
+
+@media (prefers-reduced-motion:reduce){
+  .enter,.stamp,.pop,body.low .count b{animation:none}
+  .btn,.m em i{transition:none}
+}
+</style>
+</head>
+<body>
+<div id="app"><div id="root"></div></div>
+<noscript>JavaScriptを有効にしてください。</noscript>
+<script>
+(function(){
+'use strict';
+
+/* ---------- constants & helpers ---------- */
+var GOAL=10000, DAYS=10, AP_PER_DAY=2;
+var KEY='sotsuron-endings-v1';
+var rand=function(a,b){return Math.floor(Math.random()*(b-a+1))+a};
+var chance=function(p){return Math.random()<p};
+var pick=function(a){return a[Math.floor(Math.random()*a.length)]};
+var clamp=function(v,a,b){return Math.max(a,Math.min(b,v))};
+var fmt=function(n){return Math.round(n).toLocaleString('ja-JP')};
+var esc=function(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})};
+var $=function(s,r){return (r||document).querySelector(s)};
+function el(tag,cls){var e=document.createElement(tag);if(cls)e.className=cls;return e}
+function shuffle(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t}return a}
+
+var memEnd=[];
+function loadEnd(){try{var v=JSON.parse(localStorage.getItem(KEY)||'[]');if(Array.isArray(v))memEnd=v}catch(e){}return memEnd}
+function saveEnd(id){loadEnd();if(memEnd.indexOf(id)<0)memEnd.push(id);try{localStorage.setItem(KEY,JSON.stringify(memEnd))}catch(e){}}
+
+/* ---------- sound (tiny, optional) ---------- */
+var audio=null, soundOn=true;
+function blip(freq,dur,type,vol){
+  if(!soundOn)return;
+  try{
+    audio=audio||new (window.AudioContext||window.webkitAudioContext)();
+    var o=audio.createOscillator(),g=audio.createGain(),t=audio.currentTime;
+    o.type=type||'square';o.frequency.value=freq;
+    g.gain.setValueAtTime(vol||0.03,t);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g);g.connect(audio.destination);o.start(t);o.stop(t+dur);
+  }catch(e){}
+}
+function jingle(good){
+  var n=good?[523,659,784,1047]:[330,262,220,165];
+  n.forEach(function(f,i){setTimeout(function(){blip(f,0.18,good?'triangle':'sawtooth',0.05)},i*130)});
+}
+function buzz(ms){try{if(navigator.vibrate)navigator.vibrate(ms)}catch(e){}}
+
+/* ---------- content ---------- */
+var FNAMES=['卒論.docx','卒論_修正.docx','卒論_修正2.docx','卒論_修正2_確認用.docx','卒論_最終.docx','卒論_最終_v2.docx','卒論_最終_本当に最終.docx','卒論_最終_本当に最終_2.docx','卒論_最終_これで提出.docx','卒論_提出用_絶対これ.docx'];
+
+var FRAGS=['本研究では','以上のことから','有意な差は認められなかった','と考えられる','今後の課題としたい','先行研究によれば','図1に示す','p < 0.05','一方で','すなわち','実験の結果','考察','において','を行った','が示唆された','ことが明らかとなった','これらの結果は','に着目し','仮説を立てた','再現性を確認した','さらに','また'];
+var CRAZY=['もうだめ','睡眠とは何か','カレーうどん','提出日は存在しない','あと一行','おなかすいた','だれか','Ctrl+S','ねむい','ここはどこ','猫','留年','教授ごめんなさい','単位とは','あああああ'];
+
+var ACTIONS=[
+  {id:'write',em:'✍️',nm:'書く',ht:'5秒間の連打で字数を稼ぐ。正気度が減る'},
+  {id:'read',em:'📚',nm:'文献を読む',ht:'研究の質が上がる。少し書ける'},
+  {id:'exp',em:'🧪',nm:'実験・解析',ht:'質が大きく上がる。失敗もある'},
+  {id:'ask',em:'🙇',nm:'教授に相談',ht:'信頼が上がる。厳しい一言も'},
+  {id:'sleep',em:'🛌',nm:'寝る',ht:'正気度が大きく回復する',wide:true}
+];
+
+var ACT_RUN={
+  read:function(){
+    return {t:pick(['英語の論文を3本読んだ。2本目から記憶がない。','Introductionだけで30分かかった。でも要点は掴んだ。','孫引きをたどって、やっと原典に着いた。','Discussionに自分と同じ悩みが書いてあった。少し救われた。']),
+      fx:{q:rand(10,15),c:rand(120,220),s:-4}};
+  },
+  exp:function(){
+    if(chance(0.62)){
+      return {t:pick(['データがきれいに揃った。グラフにした瞬間、報われた。','再現性あり。今日だけは自分を褒めていい。','エラーが消えて、図が出た。思わず声が出た。']),
+        fx:{q:rand(16,22),c:rand(250,400),s:-6}};
+    }
+    return {t:pick(['結果が毎回違う。これを再現性とは呼べない。','あと一歩でエラー。原因は半角スペースだった。','対照区のほうが元気だった。','条件をひとつ変え忘れていた。']),
+      fx:{q:4,s:-10}};
+  },
+  ask:function(){
+    if(chance(0.6)){
+      return {t:pick(['「方向性いいと思うよ」と言われた。胃がゆるんだ。','「この図、わかりやすいね」だけで3日は戦える。']),fx:{t:rand(10,14),q:4,s:-2}};
+    }
+    return {t:pick(['「で、結論は?」の一言で背筋が伸びた。','「構成を見直したほうがいい」。的確すぎて反論できない。']),fx:{t:3,q:8,s:-10}};
+  },
+  sleep:function(){
+    return {t:pick(['9時間寝た。脳が静かに回復している。','布団が優しい。卒論の存在を一瞬忘れた。','夢の中でも参考文献を整えていた。']),fx:{s:rand(24,30)}};
+  }
+};
+
+var EVENTS=[
+  {id:'word',em:'💾',tag:'トラブル',title:'Wordが突然フリーズした',body:'「応答なし」の文字。最後に保存したのはいつだったか。',choices:[
+    {label:'自動回復に祈る',run:function(){
+      if(chance(0.55))return {t:'回復ペインに全文が残っていた。神に感謝した。',fx:{}};
+      var lose=Math.round(Math.min(S.chars*0.25,2200));
+      return {t:'直前の分が消えていた。祈りは届かなかった。',fx:{c:-lose,s:-10}};
+    }},
+    {label:'再起動して昨日の版から復元',run:function(){
+      return {t:'昨日の版には戻せた。今日の分は…なかったことにする。',fx:{c:-Math.round(Math.min(S.chars*0.08,600)),s:-3}};
+    }}]},
+  {id:'nomi',em:'🍻',tag:'誘惑',title:'同期から飲みの誘い',body:'「息抜きしようぜ」の一言が、悪魔の囁きに聞こえる。',choices:[
+    {label:'行く',run:function(){return {t:'笑った。卒論の話は一回も出なかった。最高だった。',fx:{s:24,ap:-1}}}},
+    {label:'断って家に帰る',run:function(){return {t:'友情に少しヒビ。でも少し書けた。',fx:{s:-6,c:250}}}}]},
+  {id:'mail',em:'📧',tag:'メール',title:'教授から「進捗どう?」',body:'件名はそれだけ。本文もほぼそれだけ。',choices:[
+    {label:'「順調です」と盛って返す',run:function(){
+      if(chance(0.6))return {t:'「期待してるよ」と返ってきた。胃が痛い。',fx:{t:10}};
+      return {t:'「じゃあ来週、途中までみせて」。盛った分が返ってきた。',fx:{t:-14,s:-6}};
+    }},
+    {label:'正直に遅れを伝える',run:function(){return {t:'心配されたが、対策を一緒に考えてくれた。',fx:{t:4,q:4,s:-2}}}}]},
+  {id:'prior',em:'🔍',tag:'研究',title:'先行研究が見つからない',body:'検索ワードを変えて2時間。同じ論文ばかり出てくる。',choices:[
+    {label:'一晩かけて探す',run:function(){return {t:'3本目の英語論文でやっと見つけた。',fx:{q:14,s:-12}}}},
+    {label:'「新規性がある」ことにする',run:function(){
+      if(chance(0.7))return {t:'「新規性」と書いたら、教授も頷いた。',fx:{t:5,q:4}};
+      return {t:'「それ、〇〇さんがもうやってるよ」と一撃で撃墜された。',fx:{t:-10,q:-6}};
+    }}]},
+  {id:'ai',em:'🤖',tag:'誘惑',title:'AIが目の前でスタンバイしている',body:'「卒論、手伝おうか?」カーソルが点滅している。',choices:[
+    {label:'全部書かせる',run:function(){
+      if(chance(0.5))return {t:'文体が急に変わったのを教授に見抜かれた。',fx:{c:3000,q:-12,t:-25,sus:1}};
+      return {t:'3000字が一瞬で貼れた。誰にも気づかれなかった(と思う)。',fx:{c:3000,q:-12}};
+    }},
+    {label:'誤字チェックだけ頼む',run:function(){return {t:'誤字と「てにをは」を直してもらった。読みやすい。',fx:{q:8,s:4}}}},
+    {label:'自分の言葉で書く',run:function(){return {t:'誰も褒めてくれないけど、これは自分の卒論だ。',fx:{q:3,s:-5,t:3}}}}]},
+  {id:'conta',em:'🧫',tag:'トラブル',title:'実験が全滅した',body:'ふたを開けた瞬間にわかった。全部やり直しだ。解析がエラーで止まった人も同じ顔になる。',choices:[
+    {label:'最初からやり直す',run:function(){return {t:'一から。2回目は手が覚えていた。',fx:{ap:-1,q:6,s:-10}}}},
+    {label:'失敗も結果として書く',run:function(){
+      if(chance(0.4))return {t:'「予想外の結果」が面白がられた。',fx:{q:14,c:500}};
+      return {t:'「それで何がわかったの?」教授の目が笑っていない。',fx:{t:-8,c:500}};
+    }}]},
+  {id:'line',em:'👀',tag:'焦り',title:'同期がもう提出したらしい',body:'グループLINEに「おわたー!」のスタンプが流れてきた。',choices:[
+    {label:'焦って書く',run:function(){return {t:'焦りは文字数に変わる。内容はあとで考える。',fx:{c:900,s:-14,q:-4}}}},
+    {label:'通知を切る',run:function(){return {t:'LINEをミュートした。心が少し軽い。',fx:{s:6}}}},
+    {label:'先輩の卒論を参考にする',run:function(){
+      if(chance(0.6))return {t:'構成の勉強になった。ありがたい。',fx:{q:10,c:300}};
+      return {t:'参考にしたつもりが、似すぎていた。',fx:{c:1200,t:-15,sus:1}};
+    }}]},
+  {id:'zemi',em:'🎤',tag:'ゼミ',title:'ゼミ発表が明日だった',body:'カレンダーを見て、血の気が引いた。',choices:[
+    {label:'徹夜で資料を作る',run:function(){return {t:'資料は仕上がった。発表の評価も上々。目の下はひどい。',fx:{t:14,s:-20,q:6}}}},
+    {label:'即興で乗り切る',run:function(){
+      if(chance(0.5))return {t:'なぜかうまくいった。自分でも驚いた。',fx:{t:8}};
+      return {t:'質問に答えられず、沈黙が3秒続いた。',fx:{t:-12,s:-6}};
+    }}]},
+  {id:'ref',em:'📑',tag:'地味な敵',title:'参考文献の書式がバラバラ',body:'自己流と学会形式とURLだけが混在している。',choices:[
+    {label:'全部直す',run:function(){return {t:'1本ずつ直した。最後のピリオドまで揃った。',fx:{q:10,s:-8}}}},
+    {label:'見なかったことにする',run:function(){
+      if(chance(0.6))return {t:'誰も気づかなかった。たぶん。',fx:{s:2}};
+      return {t:'「文献リスト、揃えてね」と赤字が入った。',fx:{t:-10,q:-5}};
+    }}]},
+  {id:'ene',em:'⚡',tag:'誘惑',title:'コンビニにエナドリが並んでいる',body:'レジ前の冷蔵庫が、やけに輝いて見える。',choices:[
+    {label:'3本買う',run:function(){S.boost=true;return {t:'血管がギンギンする。次に書くときは速い…はず。',fx:{s:-10}}}},
+    {label:'コーヒーを1杯',run:function(){return {t:'香りだけで少し回復した。',fx:{s:6}}}}]},
+  {id:'cat',em:'🐈',tag:'日常',title:'猫がキーボードに乗った',body:'画面に「jjjjjjjjjjj」が並んでいく。',choices:[
+    {label:'撫でて癒される',run:function(){return {t:'猫の体温。心が戻ってきた。',fx:{s:16,c:-Math.min(S.chars,150)}}}},
+    {label:'猫の入力を採用する',run:function(){return {t:'「jjjjjjjj」も300字は300字。',fx:{c:300,q:-6,t:-3}}}}]},
+  {id:'vpn',em:'📚',tag:'トラブル',title:'論文PDFが有料の壁の向こう',body:'学外からだと「購読が必要です」と出る。',choices:[
+    {label:'学内の図書館まで行く',run:function(){return {t:'図書館で3時間。外の空気もよかった。',fx:{ap:-1,q:12,s:2}}}},
+    {label:'著者にメールを送る',run:function(){
+      if(chance(0.5))return {t:'著者から丁寧な返信とPDFが届いた。',fx:{q:14,t:4}};
+      return {t:'返事は来なかった。',fx:{s:-4}};
+    }}]},
+  {id:'night',em:'🌙',tag:'深夜',title:'午前2時、なぜか書ける',body:'指が止まらない。止めたほうがいい気もする。',choices:[
+    {label:'乗る',run:function(){return {t:'3ページ書けた。朝の自分が読んだら何と言うか。',fx:{c:1500,s:-18,q:-5}}}},
+    {label:'潔く寝る',run:function(){return {t:'朝の自分が静かに感謝している。',fx:{s:18}}}}]},
+  {id:'baito',em:'🛒',tag:'日常',title:'バイトの人手が足りない',body:'店長から「今日だけ入れない?」とLINEが来た。',choices:[
+    {label:'入る',run:function(){return {t:'働くと頭が切り替わる。お金も増える。',fx:{ap:-1,s:4}}}},
+    {label:'断る',run:function(){return {t:'店長に申し訳ない顔をされた。でも少し書けた。',fx:{s:-4,c:300}}}}]}
+];
+
+var FINAL_EV={id:'format',em:'📮',tag:'最終日',title:'提出フォーマット地獄',body:'余白、目次、ページ番号、フォント。提出要項は全部で12ページある。',choices:[
+  {label:'自動目次に賭ける',run:function(){
+    if(chance(0.5))return {t:'自動生成が一発で成功した。奇跡だ。',fx:{q:6}};
+    return {t:'目次が「エラー! 参照元が見つかりません」で埋まった。',fx:{s:-14,ap:-1}};
+  }},
+  {label:'手作業で1ページずつ整える',run:function(){return {t:'1ページずつ確認した。やっと整った。',fx:{ap:-1,q:8,s:-4}}}}]};
+
+var ENDINGS=[
+  {id:'early',rank:'S+',stamp:'秀',em:'⚡',title:'余裕の早期提出',good:1,desc:function(c){return '締切の'+c.early+'日前に提出ボタンを押した。同期が震えている。'}},
+  {id:'excellent',rank:'S',stamp:'優',em:'🏆',title:'優秀卒論賞',good:1,desc:function(){return '教授から「大学院に来ない?」と言われた。ゼミの伝説になった。'}},
+  {id:'graduate',rank:'A',stamp:'良',em:'🎓',title:'無事卒業',good:1,desc:function(){return '提出完了。卒業確定。今夜は何も考えずに寝ていい。'}},
+  {id:'charsonly',rank:'B',stamp:'可',em:'🩹',title:'字数だけは立派',good:1,desc:function(){return '字数は完璧。中身は、教授も深くは聞かなかった。'}},
+  {id:'mercy',rank:'B',stamp:'情',em:'🙏',title:'教授の温情',good:1,desc:function(c){return 'あと'+fmt(c.short)+'字足りない。でも教授が「ここまでやったなら」と判を押してくれた。'}},
+  {id:'repeat',rank:'D',stamp:'不',em:'📉',title:'留年',good:0,desc:function(c){return 'あと'+fmt(c.short)+'字。提出ボタンの前で時間切れ。来年の自分に託した。'}},
+  {id:'sus',rank:'F',stamp:'疑',em:'🚨',title:'研究室に呼び出し',good:0,desc:function(){return '「ちょっと来て」というメールが届いた。用件は書かれていない。'}},
+  {id:'burnout',rank:'F',stamp:'休',em:'💀',title:'燃え尽きて休学',good:0,desc:function(){return '気づいたら実家の天井を見ていた。休学届は今度書く。'}},
+  {id:'blank',rank:'F',stamp:'白',em:'🫥',title:'白紙提出',good:0,desc:function(){return '表紙だけ提出した。タイトルは立派だった。'}}
+];
+var END_BY_ID={};ENDINGS.forEach(function(e){END_BY_ID[e.id]=e});
+
+/* ---------- state ---------- */
+var S=null, hist=[], root=null, themeText='';
+
+function newGame(theme){
+  S={day:1,ap:AP_PER_DAY,chars:0,san:70,trust:40,q:10,sus:0,boost:false,dayLog:[],theme:theme||'',queue:shuffle(EVENTS).slice(0,DAYS-1)};
+  hist=[];
+}
+
+function apply(fx,em){
+  var chips=[];
+  function stat(key,name,prop){
+    if(!fx[key])return;
+    var b=S[prop];S[prop]=clamp(S[prop]+fx[key],0,100);
+    var d=S[prop]-b;
+    if(d)chips.push({v:d,label:name+' '+(d>0?'+':'−')+Math.abs(d)});
+  }
+  if(fx.c){
+    var b=S.chars;S.chars=Math.max(0,S.chars+Math.round(fx.c));
+    var d=S.chars-b;
+    if(d)chips.push({v:d,label:(d>0?'+':'−')+fmt(Math.abs(d))+'字'});
+  }
+  stat('s','正気度','san');stat('t','教授の信頼','trust');stat('q','研究の質','q');
+  if(fx.sus){S.sus+=fx.sus;chips.push({v:-1,label:'疑惑 +'+fx.sus})}
+  if(fx.ap){
+    var a=S.ap;S.ap=Math.max(0,S.ap+fx.ap);
+    var da=S.ap-a;
+    if(da<0){for(var i=0;i<-da;i++)S.dayLog.push(em||'⏳');chips.push({v:-1,label:'今日の行動 '+da})}
+  }
+  updateHUD();
+  return chips;
+}
+
+/* ---------- rendering ---------- */
+function setRoot(html){root.innerHTML=html;window.scrollTo(0,0)}
+
+function collectionHTML(){
+  var got=loadEnd();
+  var items=ENDINGS.map(function(e){
+    if(got.indexOf(e.id)>=0){
+      return '<li><span class="ce">'+e.em+'</span><div><div class="cn">'+e.title+'(ランク'+e.rank+')</div><div class="cd">'+esc(e.desc({early:2,short:1234}))+'</div></div></li>';
+    }
+    return '<li class="lock"><span class="ce">❔</span><div><div class="cn">？？？</div><div class="cd">まだ見ていない結末</div></div></li>';
+  }).join('');
+  return '<div class="coll"><h3>エンディング図鑑 '+got.length+'/'+ENDINGS.length+'</h3><ul>'+items+'</ul></div>';
+}
+
+function renderTitle(){
+  var got=loadEnd();
+  setRoot(
+    '<main class="title enter">'+
+      '<div class="filetab"><i></i><span>卒論_最終_本当に最終.docx - 保存されていません</span></div>'+
+      '<div class="hero"><h1><span class="t1">卒論</span><span class="t2">ギリギリ</span><span class="t3">シミュレーター</span></h1><div class="maru" aria-hidden="true">〆</div></div>'+
+      '<div class="deadline"><span>提出まで</span><b>あと10日</b></div>'+
+      '<div class="how"><div><b>10日で1万字。</b>1日2回動ける。</div><div>書く・調べる・相談する・寝る。バランスを崩したら終わり。</div><div>毎日1回、事件が起きる。</div></div>'+
+      '<div><label class="lbl" for="theme">卒論のテーマ(結果のシェアカードに載ります)</label><input class="inp" id="theme" type="text" maxlength="30" autocomplete="off" placeholder="例:◯◯における△△の影響に関する研究" value="'+esc(themeText)+'"></div>'+
+      '<button class="btn primary" id="start" type="button">書きはじめる</button>'+
+      '<p class="coll-note">エンディング '+got.length+'/'+ENDINGS.length+' を回収済み</p>'+
+      '<details class="box" id="colld"><summary>図鑑を見る</summary><div style="margin-top:10px">'+collectionHTML()+'</div></details>'+
+    '</main>'
+  );
+  $('#start').onclick=function(){
+    themeText=$('#theme').value.trim();
+    blip(520,0.08,'square',0.04);
+    startGame();
+  };
+}
+
+function buildHUD(){
+  return '<header class="hud" id="hud">'+
+    '<div class="hud-top"><span class="fname"><i></i><span id="fname"></span></span><button class="snd" id="snd" type="button" aria-pressed="true">音 ON</button></div>'+
+    '<div class="hud-main"><div class="count"><small id="dlab">提出まで</small><b id="dleft">あと10日</b></div><div class="ap" id="ap" aria-label="今日の残り行動"></div></div>'+
+    '<div class="chars"><b id="chars">0</b><span>/ '+fmt(GOAL)+'字</span></div>'+
+    '<div class="segs" id="segs">'+new Array(21).join('<i></i>')+'</div>'+
+    '<div class="meters">'+
+      '<div class="m" id="m-san"><span>正気度</span><b>70</b><em><i></i></em></div>'+
+      '<div class="m" id="m-trust"><span>教授の信頼</span><b>40</b><em><i></i></em></div>'+
+      '<div class="m" id="m-q"><span>研究の質</span><b>10</b><em><i></i></em></div>'+
+    '</div></header><div id="stage"></div>';
+}
+
+function updateHUD(){
+  if(!$('#hud'))return;
+  var left=DAYS-S.day+1;
+  $('#dleft').textContent=S.day>=DAYS?'今夜〆切':'あと'+left+'日';
+  $('#dlab').textContent=S.day>=DAYS?'最終日':'提出まで';
+  $('#fname').textContent=FNAMES[Math.min(S.day-1,FNAMES.length-1)];
+  $('#chars').textContent=fmt(S.chars);
+  var n=Math.min(20,Math.floor(S.chars/(GOAL/20)));
+  var segs=document.querySelectorAll('#segs i');
+  for(var i=0;i<segs.length;i++)segs[i].className=i<n?'on':'';
+  var ap='<span>行動</span>';
+  for(var k=0;k<AP_PER_DAY;k++)ap+='<i class="'+(k<S.ap?'':'off')+'"></i>';
+  $('#ap').innerHTML=ap;
+  [['san',S.san],['trust',S.trust],['q',S.q]].forEach(function(p){
+    var box=$('#m-'+p[0]);
+    $('b',box).textContent=p[1];
+    $('em i',box).style.width=p[1]+'%';
+    box.classList.toggle('low',p[0]==='san'&&p[1]<30);
+  });
+  document.body.classList.toggle('low',S.san<30);
+}
+
+function stage(node){
+  var st=$('#stage');st.innerHTML='';
+  node.classList.add('enter');
+  st.appendChild(node);
+  window.scrollTo(0,0);
+}
+
+function chipHTML(c){return '<span class="chip '+(c.v>0?'good':'bad')+'">'+esc(c.label)+'</span>'}
+
+function startGame(){
+  newGame(themeText);
+  setRoot(buildHUD());
+  $('#snd').onclick=function(){
+    soundOn=!soundOn;this.textContent=soundOn?'音 ON':'音 OFF';this.setAttribute('aria-pressed',String(soundOn));
+  };
+  updateHUD();
+  beginDay();
+}
+
+function beginDay(){
+  S.ap=AP_PER_DAY;S.dayLog=[];
+  updateHUD();
+  var ev=S.day>=DAYS?FINAL_EV:S.queue[S.day-1];
+  showEvent(ev);
+}
+
+function showEvent(ev){
+  var card=el('div','card');
+  card.innerHTML='<span class="tag">DAY '+S.day+' ・ '+ev.tag+'</span><h2 class="ev-title">'+ev.em+' '+ev.title+'</h2><p class="ev-body">'+ev.body+'</p>';
+  var box=el('div','stack');
+  ev.choices.forEach(function(c){
+    var b=el('button','btn');b.type='button';b.textContent=c.label;
+    b.onclick=function(){
+      Array.prototype.forEach.call(box.children,function(x){x.disabled=true});
+      var r=c.run();
+      var chips=apply(r.fx||{},ev.em);
+      blip(r.fx&&(r.fx.s<0||r.fx.t<0)?200:440,0.12,'triangle',0.05);
+      showResult(r.t,chips);
+    };
+    box.appendChild(b);
+  });
+  card.appendChild(box);
+  stage(card);
+}
+
+function nextInfo(){
+  if(S.san<=0)return {label:'視界が白くなる…',go:function(){endGame('burnout')}};
+  if(S.ap<=0)return {label:'夜になる',go:endDay};
+  return {label:'つづける',go:showActions};
+}
+
+function showResult(text,chips){
+  var info=nextInfo();
+  var card=el('div','card');
+  card.innerHTML='<p class="res-text">'+esc(text)+'</p>'+(chips.length?'<div class="chips">'+chips.map(chipHTML).join('')+'</div>':'');
+  var b=el('button','btn primary');b.type='button';b.textContent=info.label;b.onclick=info.go;
+  card.appendChild(b);
+  stage(card);
+}
+
+function showActions(){
+  var wrap=el('div','stack');
+  var grid=el('div','actions');
+  ACTIONS.forEach(function(a){
+    var b=el('button','btn act'+(a.wide?' wide':''));b.type='button';
+    b.innerHTML='<span class="em">'+a.em+'</span>'+(a.wide?'<span class="tx">':'')+'<span class="nm">'+a.nm+'</span><span class="ht">'+a.ht+'</span>'+(a.wide?'</span>':'');
+    b.onclick=function(){doAction(a)};
+    grid.appendChild(b);
+  });
+  wrap.appendChild(grid);
+  if(S.chars>=GOAL){
+    var sb=el('button','btn marker');sb.type='button';
+    var early=DAYS-S.day;
+    sb.innerHTML='📮 いま提出する<br><span class="ht" style="font-weight:500;font-size:12px">'+(early>=1?'締切の'+early+'日前。ここでゲーム終了':'ここでゲーム終了')+'</span>';
+    sb.onclick=function(){finish(true)};
+    wrap.appendChild(sb);
+  }
+  var hint=el('p','sub');
+  hint.textContent='今日はあと'+S.ap+'回動ける';
+  wrap.appendChild(hint);
+  stage(wrap);
+}
+
+function spend(em){S.ap=Math.max(0,S.ap-1);S.dayLog.push(em)}
+
+function doAction(a){
+  if(a.id==='write')return doWrite();
+  var r=ACT_RUN[a.id]();
+  spend(a.em);
+  var chips=apply(r.fx,a.em);
+  blip(r.fx.s>0?660:330,0.12,'triangle',0.05);
+  showResult(r.t,chips);
+}
+
+function doWrite(){
+  var boost=S.boost, crazy=S.san<30, DUR=5000;
+  var card=el('div','card frenzy');
+  card.innerHTML='<span class="tag">書く ・ '+(boost?'エナドリ全開 ×1.5':'5秒')+'</span>'+
+    '<div class="timer"><i id="tbar"></i></div>'+
+    '<div class="doc" id="doc"></div>'+
+    '<button class="tapbtn" id="tap" type="button" aria-label="連打して書く">タップで書き始める</button>'+
+    '<div class="fz-count"><b id="fzc">0</b><span>字</span></div>';
+  stage(card);
+  var started=false,over=false,t0=0,total=0,txt='',raf=0;
+  var btn=$('#tap'),docEl=$('#doc'),bar=$('#tbar'),cnt=$('#fzc');
+
+  function tap(x,y){
+    if(over)return;
+    if(!started){started=true;t0=performance.now();btn.textContent='叩け!!';loop()}
+    var n=Math.round(rand(32,58)*(boost?1.5:1));
+    total+=n;
+    var f=(crazy&&chance(0.55))?pick(CRAZY):pick(FRAGS);
+    txt+=f+(chance(0.35)?'。':'');
+    if(txt.length>300)txt=txt.slice(-260);
+    docEl.textContent=txt;docEl.scrollTop=docEl.scrollHeight;
+    cnt.textContent=fmt(total);
+    var p=el('span','pop');p.textContent='+'+n;
+    var r=btn.getBoundingClientRect();
+    p.style.left=(x==null?r.width/2:x-r.left)+'px';
+    p.style.top=(y==null?r.height/2:y-r.top)+'px';
+    btn.appendChild(p);
+    if(btn.querySelectorAll('.pop').length>14)btn.removeChild(btn.querySelector('.pop'));
+    setTimeout(function(){if(p.parentNode)p.parentNode.removeChild(p)},650);
+    blip(360+Math.random()*300,0.04,'square',0.02);
+    buzz(6);
+  }
+  function loop(){
+    var p=(performance.now()-t0)/DUR;
+    bar.style.transform='scaleX('+Math.max(0,1-p)+')';
+    if(p>=1){end();return}
+    raf=requestAnimationFrame(loop);
+  }
+  function end(){
+    over=true;cancelAnimationFrame(raf);btn.disabled=true;btn.textContent='時間切れ';
+    setTimeout(function(){
+      S.boost=false;
+      var fx={c:total,s:total===0?-2:-(8+(boost?6:0))};
+      var t=total===0?'画面を見つめて終わった。0字。':
+        total<700?'指が重い。1行ずつ絞り出した。':
+        total<1300?'まずまずのペース。段落がひとつ増えた。':
+        total<2000?'ゾーンに入った。時間が溶けた。':
+        '神が降りてきた。指が勝手に動いた。';
+      if(boost)t+=' エナドリが切れて、どっと疲れた。';
+      spend('✍️');
+      var chips=apply(fx,'✍️');
+      jingle(total>=1300);
+      showResult(t,chips);
+    },500);
+  }
+  btn.addEventListener('pointerdown',function(e){e.preventDefault();tap(e.clientX,e.clientY)});
+  btn.addEventListener('keydown',function(e){if(e.key===' '||e.key==='Enter'){e.preventDefault();tap()}});
+  btn.addEventListener('click',function(e){e.preventDefault()});
+  try{btn.focus({preventScroll:true})}catch(e){}
+}
+
+function endDay(){
+  hist.push(S.dayLog.join('')||'💤');
+  if(S.day>=DAYS)return finish(false);
+  S.day++;
+  beginDay();
+}
+
+function judge(early){
+  if(S.chars<1000)return 'blank';
+  if(S.sus>=1&&S.trust<40)return 'sus';
+  if(S.chars>=GOAL){
+    if(early>=2&&S.q>=50)return 'early';
+    if(S.q>=75&&S.trust>=65)return 'excellent';
+    if(S.q>=45)return 'graduate';
+    return 'charsonly';
+  }
+  return (S.trust>=65&&S.chars>=GOAL*0.7)?'mercy':'repeat';
+}
+
+function finish(submitEarly){
+  if(submitEarly&&S.dayLog.length)hist.push(S.dayLog.join(''));
+  var early=submitEarly?DAYS-S.day:0;
+  endGame(judge(early),early);
+}
+
+function endGame(id,early){
+  early=early||0;
+  if(id==='burnout'&&S.dayLog.length)hist.push(S.dayLog.join(''));
+  var E=END_BY_ID[id];
+  saveEnd(id);
+  document.body.classList.remove('low');
+  var ctx={early:early,short:Math.max(0,GOAL-S.chars)};
+  var when=id==='burnout'?('DAY '+S.day+'で脱落'):(early>=1?early+'日前に提出':'締切ギリギリ');
+  var theme=S.theme||'無題の卒論';
+  var rows=[];
+  for(var i=0;i<hist.length;i+=5)rows.push(hist.slice(i,i+5).join(' '));
+  var score=calcScore(id,early);
+  var text='【卒論ギリギリシミュレーター】\n'+E.em+' '+E.title+'(ランク'+E.rank+' / '+score+'点)\n『'+theme+'』\n'+fmt(S.chars)+'字 / '+fmt(GOAL)+'字 ・ '+when+'\n'+rows.join('\n')+'\n#卒論ギリギリシミュ #卒論';
+  var enc=encodeURIComponent(text);
+  setRoot(
+    '<main class="result">'+
+      '<section class="card share enter" id="sharecard">'+
+        '<div class="stamp" aria-hidden="true">'+E.stamp+'</div>'+
+        '<div class="sc-head">卒論ギリギリシミュレーター</div>'+
+        '<div class="sc-theme">『'+esc(theme)+'』</div>'+
+        '<h2 class="sc-title">'+E.em+' '+E.title+'</h2>'+
+        '<span class="sc-rank">ランク '+E.rank+' ・ '+score+'点</span>'+
+        '<p class="sc-desc">'+esc(E.desc(ctx))+'</p>'+
+        '<dl class="stats" style="margin:0">'+
+          '<div><dt>文字数</dt><dd>'+fmt(S.chars)+'</dd></div>'+
+          '<div><dt>提出</dt><dd>'+esc(when)+'</dd></div>'+
+          '<div><dt>正気度</dt><dd>'+S.san+'</dd></div>'+
+          '<div><dt>教授の信頼</dt><dd>'+S.trust+'</dd></div>'+
+          '<div><dt>研究の質</dt><dd>'+S.q+'</dd></div>'+
+          '<div><dt>疑惑</dt><dd>'+S.sus+'</dd></div>'+
+        '</dl>'+
+        '<div class="sc-log">'+esc(rows.join('\n'))+'</div>'+
+        '<div class="sc-tag">#卒論ギリギリシミュ</div>'+
+      '</section>'+
+      '<div class="share-btns">'+
+        '<button class="btn marker full" id="copy" type="button">結果をコピーしてシェア</button>'+
+        '<a class="btn" id="xpost" href="https://twitter.com/intent/tweet?text='+enc+'" target="_blank" rel="noopener noreferrer">Xでポスト</a>'+
+        '<a class="btn" id="line" href="https://line.me/R/share?text='+enc+'" target="_blank" rel="noopener noreferrer">LINEで送る</a>'+
+      '</div>'+
+      '<details class="box" id="tbox"><summary>シェア用テキストを表示</summary><textarea id="ttxt" readonly></textarea></details>'+
+      '<section class="card" id="thesis" hidden>'+
+        '<span class="tag">模擬卒論</span>'+
+        '<h3 class="ev-title" style="font-size:20px">この結果で、卒論を書いてもらう</h3>'+
+        '<p class="ev-body">テーマとスコアに合わせて、Claudeが短い卒論を書きます。出来はプレイ結果しだいです。</p>'+
+        '<button class="btn primary" id="gen" type="button">卒論を書いてもらう</button>'+
+        '<div class="th-msg" id="thmsg" hidden></div>'+
+        '<div class="paper" id="paper" hidden></div>'+
+        '<div class="share-btns" id="paperbtns" hidden><button class="btn" id="pcopy" type="button">コピー</button><button class="btn" id="psave" type="button">.mdで保存</button></div>'+
+        '<p class="note">ゲーム内で生成した模擬卒論です。内容、数値、文献はすべて架空で、実際の提出には使えません。</p>'+
+      '</section>'+
+      '<button class="btn primary" id="again" type="button">もう一回やる</button>'+
+      '<details class="box"><summary>エンディング図鑑</summary><div style="margin-top:10px">'+collectionHTML()+'</div></details>'+
+    '</main>'
+  );
+  $('#ttxt').value=text;
+  $('#copy').onclick=function(){copyText(text,this)};
+  $('#again').onclick=function(){renderTitle()};
+  setupThesis(E,ctx,score,theme,when);
+  jingle(!!E.good);
+}
+
+function calcScore(id,early){
+  var sc=Math.min(S.chars/GOAL,1)*40+S.q*0.35+S.trust*0.15+S.san*0.1-S.sus*10+(early>=2?5:0);
+  if(id==='burnout')sc=Math.min(sc,35);
+  if(id==='blank')sc=Math.min(sc,5);
+  return clamp(Math.round(sc),0,100);
+}
+
+var STYLE_BY_END={
+  early:'完成度が非常に高い。論旨が明快で、考察も鋭い。研究者の卵が書いた優れた卒論。',
+  excellent:'完成度が高く、大学院進学を勧めたくなる水準。',
+  graduate:'標準的で堅実。破綻はないが、特別な個性もない。',
+  charsonly:'字数は十分だが中身が薄い。「前述のとおり」「すなわち」などで同じ内容を言い換えて水増ししている。',
+  mercy:'前半はしっかりしているが、後半は息切れ。「今後の課題としたい」が多く、考察が尻すぼみになる。',
+  repeat:'途中で力尽きている。第3章あたりから箇条書きになり、最後は「(以下、未完)」で終わる。',
+  sus:'前半は学生らしい文体なのに、途中から急に整いすぎた文体に変わる。先行研究との類似をそれとなく匂わせる。',
+  burnout:'序盤はまともだが、後半から文章が崩壊していく。幻覚じみた一文(夕食の献立、睡眠、猫など)が混ざり、最後は途切れる。',
+  blank:'表紙とタイトルのみ。本文は「はじめに」の1〜2行だけで、あとは空白。'
+};
+
+function setupThesis(E,ctx,score,theme,when){
+  var sec=$('#thesis');
+  if(!sec||!window.claude||!window.claude.use)return;
+  var snap={chars:S.chars,q:S.q,trust:S.trust,san:S.san,sus:S.sus};
+  var last='';
+  window.claude.use('sample').then(function(sample){
+    if(!sample)return;
+    sec.hidden=false;
+    var gen=$('#gen'),paper=$('#paper'),msg=$('#thmsg'),btns=$('#paperbtns');
+    function say(t){msg.textContent=t;msg.hidden=!t}
+    gen.onclick=function(){
+      gen.disabled=true;gen.textContent='執筆中…';say('');paper.hidden=false;paper.textContent='';btns.hidden=true;
+      var prompt='あなたは卒論ゲームの「模擬卒論ジェネレーター」です。プレイ結果に合わせて、短い日本語の模擬卒論を書いてください。\n\n'+
+        '【卒論のテーマ】'+theme+'\n'+
+        '【結果】'+E.title+'(ランク'+E.rank+'、'+score+'点/100点)\n'+
+        '【ステータス】文字数 '+snap.chars+'/'+GOAL+'、研究の質 '+snap.q+'/100、教授の信頼 '+snap.trust+'/100、正気度 '+snap.san+'/100、不正疑惑 '+snap.sus+'\n'+
+        '【出来のスタイル】'+STYLE_BY_END[E.id]+'\n\n'+
+        '【書き方の条件】\n'+
+        '- 点数が高いほど、論理と文章の質を高くする。低いほど、スタイルの指示どおりに崩す。ただし笑える範囲で、悪意や攻撃的な内容は入れない。\n'+
+        '- 構成:タイトル / ■要旨 / ■1 はじめに / ■2 方法 / ■3 結果 / ■4 考察 / ■5 おわりに。各節は2〜4文。全体で700〜1000字。\n'+
+        '- マークダウン記法(#や**)は使わず、プレーンテキストで書く。\n'+
+        '- 数値や結果は架空のものとして控えめに書く。実在の論文、人物、団体、URLは出さない。参考文献欄は作らない。\n'+
+        '- 前置きや解説は書かず、卒論の本文だけを出力する。';
+      sample(prompt,{modelTier:'default',cache:false,onText:function(o){paper.textContent=o.text}}).then(function(r){
+        last=r.text;paper.textContent=r.text;btns.hidden=false;gen.disabled=false;gen.textContent='書き直してもらう';
+      }).catch(function(e){
+        if(e&&e.text){last=e.text;paper.textContent=e.text;btns.hidden=false}
+        else paper.hidden=true;
+        say(e&&e.code==='rate_limited'?'混み合っています。少し待ってからもう一度押してください。':'卒論を書けませんでした。もう一度押してください。');
+        gen.disabled=false;gen.textContent='もう一度書いてもらう';
+      });
+    };
+    $('#pcopy').onclick=function(){
+      var b=this,l=b.textContent;
+      function ok(){b.textContent='コピーしました';setTimeout(function(){b.textContent=l},1800)}
+      function manual(){
+        try{var r=document.createRange();r.selectNodeContents(paper);var s=window.getSelection();s.removeAllRanges();s.addRange(r)}catch(e){}
+        b.textContent='選択しました。コピーしてください';setTimeout(function(){b.textContent=l},2800);
+      }
+      try{if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(last).then(ok,manual);else manual()}catch(e){manual()}
+    };
+    $('#psave').onclick=function(){
+      var b=this;
+      window.claude.use('downloads').then(function(d){
+        if(!d){say('この画面では保存できません。コピーを使ってください。');return}
+        return d.save({filename:'模擬卒論.md',data:'# '+theme+'\n\n(ゲーム内で生成した模擬卒論。内容・数値・文献はすべて架空)\n\n'+last+'\n'}).catch(function(e){
+          if(!e||e.code!=='declined')say('保存できませんでした。コピーを使ってください。');
+        });
+      }).catch(function(){say('保存できませんでした。コピーを使ってください。')});
+    };
+  }).catch(function(){});
+}
+
+function copyText(text,btn){
+  var label=btn.textContent;
+  function ok(){btn.textContent='コピーしました。そのまま貼って投稿';setTimeout(function(){btn.textContent=label},2400)}
+  function manual(){
+    var d=$('#tbox'),t=$('#ttxt');
+    d.open=true;t.focus();t.select();
+    btn.textContent='下のテキストを選択しました。コピーしてください';
+    setTimeout(function(){btn.textContent=label},3200);
+  }
+  try{
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(ok,manual);
+    }else{manual()}
+  }catch(e){manual()}
+}
+
+/* ---------- boot ---------- */
+root=$('#root');
+renderTitle();
+
+/* test hook (no effect on play) */
+window.__sotsu={judge:judge,endGame:endGame,newGame:newGame,get state(){return S}};
+})();
+</script>
+</body>
+</html>
