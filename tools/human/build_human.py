@@ -51,6 +51,16 @@ CHARS = {
 }
 CHARS['professor'] = CHARS['prof_normal']
 
+# 髪の作り方。thr_c/thr_s=生え際の高さ(目の上から、中央/こめかみ。小さいほど前髪が下がる)、edge=生え際のぼかし、
+# face_t=殻にする面の重み、push=頭皮からの厚み、crown=頭頂の盛り、strand=毛並みの濃淡、paint=肌に髪色を塗る強さ
+HAIR_DEFAULT = dict(thr_c=0.040, thr_s=0.030, edge=0.0035, face_t=0.5, push=0.0035, crown=2.4, taper=0, shell=True, strand=0.30, paint=1.0, smooth=3, bob_scale=1.0)
+HAIR_WOMEN = dict(thr_c=0.027, thr_s=0.036, push=0.0035, crown=1.8, smooth=2, bob_scale=0.6)   # ぱっつん前髪のおかっぱ
+HAIR_PRESETS = {
+    'A': dict(),                                                       # 頭皮ぴったり
+    'B': dict(push=0.0035, crown=2.4, smooth=3),                       # 頭皮ぴったり+頭頂のボリューム
+    'C': dict(thr_c=0.027, thr_s=0.036, push=0.0035, crown=1.8, smooth=2),   # ぱっつん前髪
+    'D': dict(shell=False, edge=0.008, face_t=2.0),                    # 塗りだけ
+}
 CHEST = (1.6, 4.4, 30)   # 骨盤からの高さ(dm)の範囲と、基準にする前方位置のパーセンタイル(女性の胸)
 GROIN = (2.2, 0.2, 62)   # 骨盤の下(dm)の範囲と、基準にする前方位置のパーセンタイル
 DRAPE_PLANE = [None, None]   # 上着の基準面(y)と胸の頂点の高さ(z)。ネクタイの位置合わせに使う
@@ -281,9 +291,15 @@ def main():
     sig = lambda x: 1 / (1 + np.exp(-x))
     dy = P[:, 1] - eyeC[1]; dz = P[:, 2] - eyeC[2]
     dx = np.abs(P[:, 0] - eyeC[0])
-    thr = 0.043 - 0.013 * np.clip(dx / 0.075, 0, 1) ** 1.5      # 中央が高く、こめかみで低い(前髪は額の近くまで)
+    HC = dict(HAIR_DEFAULT)
+    if c.get('hair_style') == 'bob':
+        HC.update(HAIR_WOMEN)
+    HC.update(c.get('hair_cfg', {}))
+    if os.environ.get('HAIR_VARIANT') in HAIR_PRESETS and c.get('hair_style') != 'buzz':
+        HC.update(HAIR_PRESETS[os.environ['HAIR_VARIANT']])
+    thr = HC['thr_c'] - (HC['thr_c'] - HC['thr_s']) * np.clip(dx / 0.075, 0, 1) ** 1.5   # 中央とこめかみの生え際
     hw = np.maximum.reduce([
-        sig((dz - thr) / 0.0055) * sig((dy + 0.02) / 0.006),
+        sig((dz - thr) / HC['edge']) * sig((dy + 0.02) / 0.006),
         sig((dz - 0.030) / 0.004) * sig((dy - 0.034) / 0.004),
         sig((dy - 0.068) / 0.005) * sig((dz + 0.072) / 0.006),
     ])
@@ -292,7 +308,12 @@ def main():
     ear = sig((dx - 0.058) / 0.006) * sig((dz + 0.062) / 0.005) * sig((0.034 - dz) / 0.005) * sig((dy - 0.0) / 0.006) * sig((0.092 - dy) / 0.006)
     hw *= (1 - ear)
     hair_rgb = np.array(c['hair']) * (1 - c['hair_gray']) + np.array([0.62, 0.62, 0.62]) * c['hair_gray']
-    col = col * (1 - hw[:, None]) + hair_rgb * hw[:, None]
+    col = col * (1 - hw[:, None] * HC['paint']) + hair_rgb * hw[:, None] * HC['paint']
+    # 毛並みの濃淡:頭頂から放射状の筋(頂点カラー)。髪の殻に使う
+    ang = np.arctan2(P[:, 0] - eyeC[0], P[:, 1] - (eyeC[1] + 0.07))
+    rnd = np.random.default_rng(3).random(len(P))
+    stripe = 0.5 + 0.5 * np.sin(ang * 36 + P[:, 2] * 55)
+    hair_vcol = np.clip(hair_rgb[None, :] * (1 - HC['strand'] * 0.5 + HC['strand'] * (0.75 * stripe + 0.25 * rnd))[:, None], 0, 1)
 
     # ---------------- Blender
     import bpy, bmesh
@@ -375,7 +396,7 @@ def main():
 
     # ---------------- 服・髪の殻
     Nrm = vertex_normals(P, [vi for vi, _, _ in body_faces])
-    def shell(name, face_list, push, rgb, rough=0.8, smooth=2, src_positions=None, taper=0, pmul=None, drape=False, hem=None, crotch=None):
+    def shell(name, face_list, push, rgb, rough=0.8, smooth=2, src_positions=None, taper=0, pmul=None, drape=False, hem=None, crotch=None, vcol=None):
         pos = (src_positions if src_positions is not None else P).copy()
         if drape:
             # 胸の一番前の点から下は、布がまっすぐ垂れる(谷間やアンダーバストに沿わない)。左右の端へは徐々に弱める
@@ -461,7 +482,7 @@ def main():
                 zz = float(np.mean([newpos[i, 2] for i in low]))
                 for i in low:
                     newpos[i, 2] = zz
-        return build_mesh(name, face_list, newpos, {name: make_mat(name, rgb, rough)})
+        return build_mesh(name, face_list, newpos, {name: make_mat(name, rgb, rough, vcol=vcol is not None)}, vcolors=vcol)
 
     body_only = [(vi, ti) for vi, ti in groups['body']]
     def region(bset, need_all=True):
@@ -611,10 +632,10 @@ def main():
             t = np.clip((by - v[1]) / 0.03 + 0.5, 0, 1)  # つま先(-Y)ほど ball
             gb.add([k], float(t), 'REPLACE'); gf.add([k], float(1 - t), 'REPLACE')
     style = c.get('hair_style', 'short')
-    if style != 'buzz':
-        hair_faces = [(vi, ti, 'Hair') for vi, ti in body_only if all(hw[i] > 0.9 for i in vi)]
-        crown = 1 + 1.2 * sig((dz - 0.08) / 0.015) + 0.5 * sig((dy - 0.06) / 0.015)
-        shell('Hair', hair_faces, 0.0045, tuple(hair_rgb), 0.75, smooth=8, taper=5, pmul=crown)
+    if style != 'buzz' and HC['shell']:
+        hair_faces = [(vi, ti, 'Hair') for vi, ti in body_only if all(hw[i] > HC['face_t'] for i in vi)]
+        crown = 1 + HC['crown'] * sig((dz - 0.06) / 0.02)
+        shell('Hair', hair_faces, HC['push'], tuple(hair_rgb), 0.7, smooth=HC['smooth'], taper=HC['taper'], pmul=crown, vcol=hair_vcol)
     if style == 'bob':
         # ボブ:頭の輪郭に沿った輪を縦に重ねた、まとまりのある髪。顔の前は開けて、あごの高さで切りそろえる
         hv = [i for i in range(13380) if dom[i] == 'head']
@@ -636,7 +657,7 @@ def main():
             rx = float(np.percentile(np.abs(pts[:, 0] - cx), 80))
             ry = float(np.percentile(np.abs(pts[:, 1] - cy), 92))
             t = np.clip((z_ear - zk) / max(z_ear - z_bot, 1e-3), 0, 1)
-            off = 0.011 + 0.013 * np.sin(np.clip((z_top - zk) / 0.08, 0, 1) * np.pi / 2)   # 頭の上は薄く、横は厚く
+            off = float(os.environ.get('BOB_SCALE', HC['bob_scale'])) * (0.011 + 0.013 * np.sin(np.clip((z_top - zk) / 0.08, 0, 1) * np.pi / 2))   # 頭の上は薄く、横は厚く
             if zk < z_ear:
                 off = off * (1 - 0.45 * t) - 0.006 * t       # すそは少しすぼめる(内巻き)
             ring.append((cx, cy, rx + off, ry + off, zk))
