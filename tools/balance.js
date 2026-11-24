@@ -27,7 +27,7 @@ const BOT=`window.__play=async function(strategy){
   while(Date.now()-t0<20000){
     await tick();
     const res=document.querySelector('.result');
-    if(res){const s=S();return {lab:s.lab,down:s.down,title:document.querySelector('.sc-title').textContent,score:+document.querySelector('.sc-rank').textContent.match(/(\\d+)点/)[1],day:s.day,chars:s.chars,q:s.q,t:s.trust,san:s.san,sus:s.sus}}
+    if(res){const s=S();return {chaos:(()=>{let p=0;for(const k in s.marks)p+=s.marks[k];p+=Math.floor((s.crazyN||0)/10)+(s.san<20?1:0)+s.sus*2;return Math.min(5,Math.floor(p*0.8))})(),lab:s.lab,down:s.down,title:document.querySelector('.sc-title').textContent,score:+document.querySelector('.sc-rank').textContent.match(/(\\d+)点/)[1],day:s.day,chars:s.chars,q:s.q,t:s.trust,san:s.san,sus:s.sus}}
     const roll=document.getElementById('roll'),go=document.getElementById('labgo');
     if(go){click(go);continue}
     if(roll){click(roll);continue}
@@ -71,14 +71,14 @@ const BOT=`window.__play=async function(strategy){
   const out={};
   const STRATS=(process.argv[3]||'random,casual,sensible,grinder').split(',');
   for(const strat of STRATS){
-    const tally={},sc=[],byLab={};let chars=0,downs=0;
+    const tally={},sc=[],byLab={};let chars=0,downs=0;const ch=[0,0,0,0,0,0];
     for(let i=0;i<N;i++){
       if(i===0&&strat===STRATS[0]){await p.goto(url);await p.evaluate(BOT)}
       else await p.evaluate(()=>document.getElementById('again').click());
       await p.evaluate(()=>document.getElementById('start').click());
       const r=await p.evaluate(s=>window.__play(s),strat);
       if(r.title==='STUCK'){console.log('STUCK');await p.goto(url);await p.evaluate(BOT);i--;continue}
-      tally[r.title]=(tally[r.title]||0)+1;sc.push(r.score);chars+=r.chars;if(r.down)downs++;
+      tally[r.title]=(tally[r.title]||0)+1;sc.push(r.score);chars+=r.chars;if(r.down)downs++;ch[r.chaos]++;
       const B=byLab[r.lab]=byLab[r.lab]||{n:0,good:0,bad:0};B.n++;
       if(/早期|優秀|無事|字数|温情/.test(r.title))B.good++;else B.bad++;
     }
@@ -86,6 +86,7 @@ const BOT=`window.__play=async function(strategy){
     out[strat]={tally,median:sc[N>>1],avgChars:Math.round(chars/N)};
     console.log('\n['+strat+'] n='+N+' 中央値スコア '+sc[N>>1]+' 平均字数 '+Math.round(chars/N)+' 一度倒れた '+(downs/N*100).toFixed(0)+'%');
     Object.entries(tally).sort((a,b)=>b[1]-a[1]).forEach(([k,v])=>console.log('  '+k.padEnd(14,'　')+(v/N*100).toFixed(1).padStart(5)+'%'));
+    console.log('  カオス度の分布(0〜5): '+ch.map(v=>(v/N*100).toFixed(0)+'%').join(' / '));
     console.log('  研究室別 卒業できた率: '+Object.entries(byLab).map(([k,v])=>k+' '+(v.good/v.n*100).toFixed(0)+'%(n='+v.n+')').join(' / '));
   }
   await b.close();
