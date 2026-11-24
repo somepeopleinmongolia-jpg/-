@@ -46,7 +46,7 @@ CHARS = {
                skirt=(0.10, 0.13, 0.24), skirt_cut=0.02, pants=(0.07, 0.07, 0.10), shoes=(0.06, 0.05, 0.05), brow=0.45),
     'friend': C(age=0.52, muscle=0.55, weight=0.5, height=0.56, top=(0.52, 0.54, 0.50),
                 pants=(0.18, 0.24, 0.36), shoes=(0.86, 0.86, 0.84), brow=0.6),
-    'lover': C(gender=0.0, age=0.62, muscle=0.40, weight=0.40, height=0.47, hair_style='bob', skin=(0.92, 0.70, 0.58),
+    'lover': C(gender=0.0, age=0.62, muscle=0.36, weight=0.12, height=0.5, hair_style='bob', skin=(0.92, 0.70, 0.58),
                hair=(0.20, 0.11, 0.07), hair_cfg={'bob_len': 0.15}, top=(0.88, 0.60, 0.64), skirt=(0.22, 0.27, 0.40), pants=(0.09, 0.09, 0.12),
                shoes=(0.85, 0.82, 0.78), brow=0.40, blush=0.22, blush_rgb=(0.92, 0.52, 0.52), lipc=(0.90, 0.45, 0.46),
                liner=0.85, iris_t=0.80, iris=(0.36, 0.22, 0.14),
