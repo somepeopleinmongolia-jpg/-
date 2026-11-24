@@ -201,8 +201,7 @@ def main():
     dom = np.array([wmat.get(i, ('Root', 0))[0] for i in range(n)], dtype=object)
 
     # 体メッシュ(体+目+まつげ+歯+舌)
-    keep = ['body', 'helper-l-eye', 'helper-r-eye', 'helper-upper-teeth', 'helper-lower-teeth', 'helper-tongue'] + \
-           [g for g in groups if 'eyelashes' in g]
+    keep = ['body', 'helper-l-eye', 'helper-r-eye', 'helper-upper-teeth', 'helper-lower-teeth', 'helper-tongue']
     mat_of = lambda g: 'skin' if g == 'body' else 'eye' if g.endswith('-eye') else 'lash' if 'eyelashes' in g else 'teeth' if 'teeth' in g else 'tongue'
     body_faces = [(vi, ti, mat_of(g)) for g in keep for vi, ti in groups.get(g, [])]
 
@@ -230,10 +229,10 @@ def main():
     for e in (eyeL, eyeR):
         d = P - e
         # x方向に眉の幅、z方向に目の 1.8〜3.0cm 上、前面のみ
-        bx = np.clip(1 - (np.abs(d[:, 0] + np.sign(e[0]) * 0.004) / 0.03) ** 2, 0, 1)
-        bz = np.clip(1 - ((d[:, 2] - 0.024) / 0.0075) ** 2, 0, 1)
+        bx = np.clip(1 - (np.abs(d[:, 0] + np.sign(e[0]) * 0.012) / 0.024) ** 2, 0, 1)
+        bz = np.clip(1 - ((d[:, 2] - 0.026) / 0.0085) ** 2, 0, 1)
         front = (d[:, 1] < 0.0).astype(float) * (np.abs(d[:, 1]) < 0.05)
-        b = bx * bz * front * c['brow']
+        b = np.clip(bx * bz * front * c['brow'] * 1.7, 0, 0.95)
         b[13380:] = 0
         hc = np.array(c['hair']) * 1.1
         col = col * (1 - b[:, None]) + hc * b[:, None]

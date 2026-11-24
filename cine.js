@@ -109,8 +109,8 @@ const BG = {
 const SHOT = {
   wide:   (c, h) => ({ pos: [0.35, 1.3, 5.6], at: [0, 0.9, -0.6], fov: 30, zoom: 1.0, blur: 6 }),   // 部屋に固定
   full:   (c, h) => ({ pos: [c.x + 0.45, 1.2, c.z + 4.1], at: [c.x, 1.0, c.z], fov: 32, zoom: 1.1, blur: 7 }),
-  medium: (c, h) => ({ pos: [h.x + 0.42, h.y - 0.08, h.z + 1.55], at: [h.x, h.y - 0.15, h.z], fov: 30, zoom: 1.25, blur: 9 }),
-  close:  (c, h) => ({ pos: [h.x + 0.08, h.y, h.z + 0.72], at: [h.x, h.y - 0.03, h.z], fov: 27, zoom: 1.6, blur: 13 }),
+  medium: (c, h) => ({ pos: [h.x + 0.5, h.y - 0.25, h.z + 2.5], at: [h.x, h.y - 0.35, h.z], fov: 30, zoom: 1.2, blur: 9 }),
+  close:  (c, h) => ({ pos: [h.x + 0.35, h.y - 0.05, h.z + 1.55], at: [h.x, h.y - 0.1, h.z], fov: 30, zoom: 1.4, blur: 12 }),
   low:    (c, h) => ({ pos: [c.x + 0.5, 0.55, c.z + 1.9], at: [h.x, h.y - 0.2, h.z], fov: 34, zoom: 1.3, blur: 9 }),
   side:   (c, h) => ({ pos: [h.x + 1.3, h.y - 0.1, h.z + 0.9], at: [h.x, h.y - 0.2, h.z], fov: 30, zoom: 1.3, blur: 10 }),
 };
