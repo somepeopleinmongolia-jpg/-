@@ -189,6 +189,17 @@ details.box textarea{width:100%;height:150px;margin-top:8px;font:inherit;font-si
 .note{font-size:12.5px;color:var(--muted);line-height:1.5}
 .th-msg{font-size:13px;font-weight:700;color:var(--pen)}
 
+.th-line{font-family:var(--f-body);margin:8px 0 12px;padding:8px 10px;border:2px dashed var(--muted);border-radius:12px;background:#e9f3ea;display:flex;flex-direction:column;gap:5px;line-height:1.5;letter-spacing:0}
+.th-line .lh{font-size:11.5px;font-weight:900;color:var(--muted)}
+.paper .bub{max-width:84%;margin:0;padding:4px 11px;border-radius:15px;font-size:14px;font-weight:700}
+.bub.me{align-self:flex-end;background:#9be08a;border-bottom-right-radius:4px}
+.bub.them{align-self:flex-start;background:#fff;border:1.5px solid var(--grid);border-bottom-left-radius:4px}
+.th-line .lf,.th-letter .lf{font-family:var(--f-body);font-size:11px;font-weight:700;color:var(--pen)}
+.th-letter{margin:10px 2px 14px;padding:12px 14px;background:#fff4f3;border:2px solid #f0b4b0;border-radius:4px;font-size:14.5px;line-height:1.9;transform:rotate(-.6deg);box-shadow:2px 3px 0 #f0b4b0}
+.paper .th-letter p{margin:0}
+.th-letter .to{font-weight:700}
+.th-letter .sig{text-align:right;margin-top:4px}
+
 /* lab gacha */
 .gacha{padding-top:20px;display:flex;flex-direction:column;gap:14px}
 .g-title{font-family:var(--f-display);font-weight:400;font-size:clamp(34px,10vw,44px);line-height:1.1;background:linear-gradient(transparent 62%,var(--marker) 62%);align-self:flex-start;padding-right:6px}
@@ -388,6 +399,18 @@ var EVENTS=[
     {label:'入る',run:function(){return {t:'働くと頭が切り替わる。お金も増える。',fx:{ap:-1,s:4}}}},
     {label:'断る',run:function(){return {t:'店長に申し訳ない顔をされた。でも少し書けた。',fx:{s:-4,c:300}}}}]}
 ];
+
+EVENTS.push(
+  {id:'koi',em:'💬',tag:'恋',title:'恋人から「最近会えてないね」',body:'通知のプレビューだけで、胸が少し痛い。',choices:[
+    {label:'長文で返す',run:function(){mark('lover');return {t:'気持ちを全部書いて、貼り付けて、送った。…どこに貼ったかは、あとでわかる。',fx:{s:14}}}},
+    {label:'「卒論終わったら」とだけ返す',run:function(){return {t:'既読はついた。返事はまだない。その間に少し書けた。',fx:{s:-6,c:250}}}}]},
+  {id:'oya',em:'🍙',tag:'実家',title:'親から「ちゃんと食べてる?」',body:'添付写真は、実家の晩ごはん。湯気まで写っている。',choices:[
+    {label:'近況を長めに返す',run:function(){mark('parent');return {t:'久しぶりに長く書いた。送ったはずの文章が、どこかに行った気がする。',fx:{s:12}}}},
+    {label:'スタンプだけ返す',run:function(){return {t:'クマのスタンプを送った。3秒で既読がついた。',fx:{s:4}}}}]},
+  {id:'letter',em:'💘',tag:'恋',title:'図書館のいつもの席の人',body:'今日も同じ席に座っている。正直、卒論より気になる。',choices:[
+    {label:'ラブレターを書く',run:function(){mark('letter');return {t:'便箋3枚。字数なら今日の卒論より進んだ。保存先は覚えていない。',fx:{s:10,ap:-1}}}},
+    {label:'卒論に集中する',run:function(){return {t:'集中した。ときどき目が合った気がした。',fx:{c:300,s:-4}}}}]}
+);
 
 var FINAL_EV={id:'format',em:'📮',tag:'最終日',title:'提出フォーマット地獄',body:'余白、目次、ページ番号、フォント。提出要項は全部で12ページある。',choices:[
   {label:'自動目次に賭ける',run:function(){
@@ -959,7 +982,25 @@ var TH_FILL=['この点は非常に重要であり、重要であるがゆえに
 var TH_OTHER=['ダンゴムシの右折傾向','学食カレーの辛さの年次変化','駅前のハトの歩行速度','研究室の観葉植物の成長記録','自販機の売り切れ予測','傘の置き忘れ率と曜日'];
 var TH_TYPO=[['研究','健久'],['考察','高察'],['結果','決家'],['検討','見当'],['明らか','赤らか'],['示唆','指唆'],['対象','大賞'],['傾向','携行'],['有意','有為'],['測定','即底']];
 var TH_POEM=['夜が明ける。データは嘘をつかない。わたしは、ときどきつく。','カーソルが点滅している。わたしの心臓と同じ速さで。','すべての有意差は、いつか有意でなくなる。','この章は、午前3時のわたしから午前9時のわたしへの手紙である。'];
-function chaosify(d,o,R,P){
+/* 誤って貼り付けたトークとラブレター。'>'は相手、'<'は自分。{T}はテーマ */
+var TH_LOVER=[
+  ['>最近会えてないね','<ごめん、今週も無理そう🙏','<卒論終わったら絶対ごはん行こ','<あと、ほんとに好き'],
+  ['<既読つけたまま寝てた、ごめん','<{T}の話ばっかりでごめんね','>いいよ、がんばってるの知ってる','<提出したら一日中となりで寝かせて'],
+  ['>今日なに食べた?','<研究室でカップ麺','<会いたい','<(この画面、卒論じゃないよね?)']
+];
+var TH_PARENT=[
+  ['>ちゃんと食べてるの?','<食べてる(カップ麺)','<仕送りありがとう','<卒業したら温泉連れてくね'],
+  ['>留年だけはしないでね','<しないと思う','<たぶん','>米送ったよ','<ありがとう、米は裏切らない'],
+  ['>卒論どう?','<順調順調','<(順調ではない)','>お父さんが応援してるって']
+];
+var TH_LETTER=[
+  ['図書館のいつもの席の人へ','あなたが返却した本に、付箋が一枚残っていました。','それを読んでから、わたしの卒論は少しも進んでいません。','提出が終わったら、声をかけてもいいですか。'],
+  ['研究室の窓ぎわの席の人へ','毎朝あなたが淹れるコーヒーの匂いで、今日も来てよかったと思います。','有意差はないかもしれませんが、この気持ちは p < 0.05 です。','提出が終わったら、学食に行きませんか。'],
+  ['ゼミでいつも前に座る人へ','あなたの発表の「以上です」が、いちばん好きな四文字です。','{T}より、あなたのことを考えている時間のほうが長いです。','この手紙が卒論に紛れ込んでいないことを祈ります。']
+];
+var TH_OOPS=['※提出直前に気づいたが、消し方がわからなかった','※コピー&ペーストの事故','※本人は気づいていない'];
+
+function chaosify(d,o,R,P,tp){
   var m=o.marks||{}, secs=d.secs;
   function sec(h){return secs.filter(function(s){return s.h.indexOf(h)>=0})[0]}
   function anyP(){var c=secs.filter(function(s){return s.p.length&&s.h!=='要旨'&&s.h!=='謝辞'});return c.length?P(c):null}
@@ -976,6 +1017,15 @@ function chaosify(d,o,R,P){
   if(m.novel&&(s=sec('はじめに')))s.p.push('先行研究は存在しない(探していない)。');
   if(m.down&&(s=anyP()))s.p.push('(この章を書いた記憶がない)');
   if(m.toc)P(secs).h='エラー! 参照元が見つかりません。';
+  /* 誤爆:恋人・親へのトーク、ラブレター */
+  var T=tp&&tp.has?'「'+tp.core+'」':'卒論';
+  var fl=function(a){return a.map(function(x){return x.split('{T}').join(T)})};
+  function put(names,obj){var c=names.map(sec).filter(Boolean);var t=c.length?P(c):anyP();if(t)(t.x=t.x||[]).push(obj)}
+  var lov=m.lover,par=m.parent,let_=m.letter;
+  if((o.chaos||0)>=4&&!lov&&!par&&!let_&&R()<0.6){var r=Math.floor(R()*3);if(r===0)lov=1;else if(r===1)par=1;else let_=1}
+  if(lov)put(['考察','結果','はじめに'],{k:'line',to:'恋人',msgs:fl(P(TH_LOVER)),note:P(TH_OOPS)});
+  if(par)put(['方法','おわりに','結果'],{k:'line',to:'母',msgs:fl(P(TH_PARENT)),note:P(TH_OOPS)});
+  if(let_)put(['考察','はじめに','おわりに'],{k:'letter',lines:fl(P(TH_LETTER)),note:'※本文の途中に紛れ込んでいた便箋'});
   if(o.scraps&&o.scraps.length&&(s=sec('考察')||sec('結果')||anyP()))s.p.push(o.scraps.slice(0,4).join('。')+'。');
   var lv=o.chaos||0;
   if(lv>=3)secs.forEach(function(x){x.p=x.p.map(function(y){TH_TYPO.forEach(function(t){if(R()<0.5)y=y.split(t[0]).join(t[1])});return y})});
@@ -1081,7 +1131,7 @@ function makeThesis(o){
     var dr=d.secs.filter(function(s){return s.h===H[3]})[0];
     if(dr)dr.p.push('(本節には、文体が不自然に整っている箇所がある)');
   }
-  chaosify(d,o,R,P);
+  chaosify(d,o,R,P,tp);
   var lab=o.lab||LAB_BY_ID.normal;
   var sur=o.sur||'〇〇';
   d.meta=['〇〇大学 〇〇学部 4年 '+sur+'研究室','提出者:あなた / 指導教員:'+sur+'先生','ゲーム内の字数 '+fmt(o.chars)+'字 ・ '+o.title+'('+o.score+'点)','カオス度 '+stars(o.chaos||0)];
@@ -1098,9 +1148,24 @@ function thesisHTML(d){
     h+='<h5>■ '+esc(s.h)+'</h5>';
     if(s.p.length)h+='<p>'+s.p.map(esc).join('')+'</p>';
     if(s.li)h+='<ul>'+s.li.map(function(x){return '<li>'+(x?esc(x):'&nbsp;')+'</li>'}).join('')+'</ul>';
+    (s.x||[]).forEach(function(x){h+=extraHTML(x)});
   });
   if(d.tail)h+='<p class="th-tail">'+esc(d.tail)+'</p>';
   return h;
+}
+function extraHTML(x){
+  if(x.k==='line'){
+    return '<div class="th-line" role="note"><div class="lh">トーク ▸ '+esc(x.to)+'</div>'+
+      x.msgs.map(function(m){return '<p class="bub '+(m.charAt(0)==='<'?'me':'them')+'">'+esc(m.slice(1))+'</p>'}).join('')+
+      '<div class="lf">'+esc(x.note)+'</div></div>';
+  }
+  var l=x.lines;
+  return '<div class="th-letter" role="note">'+l.map(function(t,i){return '<p'+(i===0?' class="to"':'')+'>'+esc(t)+'</p>'}).join('')+
+    '<p class="sig">卒論を書いている者より</p><div class="lf">'+esc(x.note)+'</div></div>';
+}
+function extraText(x){
+  if(x.k==='line')return '\n> [トーク ▸ '+x.to+']\n'+x.msgs.map(function(m){return '> '+(m.charAt(0)==='<'?'自分':x.to)+':'+m.slice(1)}).join('\n')+'\n> '+x.note+'\n';
+  return '\n> '+x.lines.join('\n> ')+'\n> 卒論を書いている者より\n> '+x.note+'\n';
 }
 function thesisText(d){
   var t='# '+d.title+'\n'+(d.sub?d.sub+'\n':'')+'\n'+TH_NOTICE+'\n\n'+d.meta.join('\n')+'\n';
@@ -1108,6 +1173,7 @@ function thesisText(d){
     t+='\n## '+s.h+'\n\n';
     if(s.p.length)t+=s.p.join('')+'\n';
     if(s.li)t+=s.li.map(function(x){return '- '+x}).join('\n')+'\n';
+    (s.x||[]).forEach(function(x){t+=extraText(x)});
   });
   if(d.tail)t+='\n'+d.tail+'\n';
   return t;
