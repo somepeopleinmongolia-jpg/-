@@ -2,7 +2,7 @@
 // ゲーム本体から import('./cine.js') で遅延読み込みする。Three.js と人物モデル(assets/people/*.glb)を使う。
 // 失敗(WebGLなし・読み込み失敗・視差効果を減らす設定)のときは何も表示せずに終わる。
 import * as THREE from 'three';
-import { GLTFLoader } from './vendor/three/examples/jsm/loaders/GLTFLoader.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 const BASE = new URL('.', import.meta.url).href;
 const cache = new Map();          // model名 -> Promise<gltf>
