@@ -1,5 +1,5 @@
 // 自動プレイでエンディングの出現率を測る。
-// 使い方: node tools/balance.js [1戦略あたりの回数=300]
+// 使い方: node tools/balance.js [1戦略あたりの回数=300] [戦略をカンマ区切り。例 casual,sensible]
 // タイマーを早送りするので「書く」の5秒は待たない。
 const {chromium}=require('playwright');
 const path=require('path');
@@ -69,10 +69,11 @@ const BOT=`window.__play=async function(strategy){
   await p.route(/^https?:/,r=>r.abort()); // フォントなど外部は読まない
   const url='file://'+path.resolve(__dirname,'..','index.html');
   const out={};
-  for(const strat of ['random','casual','sensible','grinder']){
+  const STRATS=(process.argv[3]||'random,casual,sensible,grinder').split(',');
+  for(const strat of STRATS){
     const tally={},sc=[],byLab={};let chars=0,downs=0;
     for(let i=0;i<N;i++){
-      if(i===0&&strat==='random'){await p.goto(url);await p.evaluate(BOT)}
+      if(i===0&&strat===STRATS[0]){await p.goto(url);await p.evaluate(BOT)}
       else await p.evaluate(()=>document.getElementById('again').click());
       await p.evaluate(()=>document.getElementById('start').click());
       const r=await p.evaluate(s=>window.__play(s),strat);

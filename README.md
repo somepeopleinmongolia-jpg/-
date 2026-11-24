@@ -19,6 +19,8 @@
 別の場所(Vercel / Netlify など)に置く場合は、`index.html` の `CANON_URL` と、`<head>` の `og:url` / `og:image` / `twitter:image` / `canonical` のURLを書き換える。
 
 ## メモ
+- 最初にラボ配属ガチャを引く。研究室(7タイプ、名字はランダム)で先生の厳しさや初期値、各種倍率が変わる。定義は `LABS` / `LAB_BASE`。
+- 正気度が0になっても1回目は倒れてその日が終わるだけ。2回目で燃え尽き。
 - 模擬卒論はゲーム内のテンプレートと語彙だけで作る(AI不要)。内容・数値・文献はすべて架空。
 - claude.ai上で開いたときだけ、「Claudeに書き直してもらう」ボタンが追加で出る。
 - テスト用フック:`window.__sotsu`(`judge`, `endGame`, `newGame`, `state`)。
