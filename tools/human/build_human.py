@@ -35,17 +35,18 @@ CHARS = {
     'prof_taiiku': C(age=0.62, muscle=0.95, weight=0.55, height=0.58, hair_style='buzz', skin=(0.74, 0.54, 0.40),
                      top=(0.62, 0.12, 0.13), pants=(0.10, 0.12, 0.26), shoes=(0.90, 0.90, 0.88)),
     'prof_core': C(gender=0.0, age=0.7, muscle=0.45, weight=0.42, height=0.5, hair_style='bob', hair_gray=0.2,
-                   top=(0.94, 0.94, 0.95), outer=(0.28, 0.30, 0.36), outer_kind='suit', pants=(0.22, 0.24, 0.30), brow=0.45),
+                   hair_cfg={'bob_len': 0.085}, top=(0.95, 0.95, 0.96), outer=(0.34, 0.36, 0.46), outer_kind='suit',
+                   jhem_off=0.03, jpush=0.026, skirt=(0.13, 0.14, 0.19), skirt_cut=0.02, pants=(0.08, 0.08, 0.11), brow=0.45),
     'prof_absent': C(age=0.72, muscle=0.45, weight=0.5, height=0.55, hair_gray=0.4,
                      top=(0.55, 0.44, 0.30), pants=(0.62, 0.56, 0.44)),
     'prof_yuru': C(age=0.58, muscle=0.45, weight=0.5, height=0.52, top=(0.40, 0.44, 0.31),
                    pants=(0.20, 0.27, 0.42), shoes=(0.88, 0.88, 0.86)),
-    'clerk': C(gender=0.0, age=0.6, muscle=0.45, weight=0.45, height=0.42, hair_style='bob', skin=(0.86, 0.68, 0.56),
+    'clerk': C(gender=0.0, age=0.6, muscle=0.45, weight=0.45, height=0.42, hair_style='bob', hair_cfg={'bob_len': 0.085}, skin=(0.86, 0.68, 0.56),
                top=(0.70, 0.78, 0.90), outer=(0.12, 0.16, 0.28), outer_kind='suit', pants=(0.12, 0.16, 0.28), shoes=(0.06, 0.05, 0.05), brow=0.45),
     'friend': C(age=0.52, muscle=0.55, weight=0.5, height=0.56, top=(0.52, 0.54, 0.50),
                 pants=(0.18, 0.24, 0.36), shoes=(0.86, 0.86, 0.84), brow=0.6),
     'lover': C(gender=0.0, age=0.62, muscle=0.40, weight=0.40, height=0.47, hair_style='bob', skin=(0.92, 0.70, 0.58),
-               hair=(0.20, 0.11, 0.07), hair_cfg={'bob_len': 0.085}, top=(0.88, 0.60, 0.64), skirt=(0.22, 0.27, 0.40), pants=(0.09, 0.09, 0.12),
+               hair=(0.20, 0.11, 0.07), hair_cfg={'bob_len': 0.15}, top=(0.88, 0.60, 0.64), skirt=(0.22, 0.27, 0.40), pants=(0.09, 0.09, 0.12),
                shoes=(0.85, 0.82, 0.78), brow=0.40, blush=0.22, blush_rgb=(0.92, 0.52, 0.52), lipc=(0.90, 0.45, 0.46),
                liner=0.85, iris_t=0.80, iris=(0.36, 0.22, 0.14),
                face={'eyes/l-eye-scale-incr': 0.25, 'eyes/l-eye-height1-incr': 0.25,
@@ -538,7 +539,8 @@ def main():
     neck_cut = max(bones['clavicle_l']['head'][2], bones['clavicle_r']['head'][2]) + 0.035
     legs_hands_head = {'thigh_l', 'thigh_r', 'calf_l', 'calf_r', 'foot_l', 'foot_r', 'ball_l', 'ball_r', 'head', 'hand_l', 'hand_r'}
     is_suit = c.get('outer_kind') == 'suit'
-    shirt_hem = pz + (0.02 if is_suit else 0.075)       # シャツ・トップスの裾の高さ(まっすぐ)
+    jhem_val = pz + c.get('jhem_off', -0.045)           # 上着の裾の高さ(丈)
+    shirt_hem = (jhem_val + 0.005) if is_suit else pz + 0.075    # シャツ・トップスの裾の高さ(まっすぐ)
     def top_ok(vi, hz=None):
         hz = shirt_hem if hz is None else hz
         cz = P[vi, 2].mean()
@@ -558,16 +560,19 @@ def main():
         if ok == 'suit':
             # 上着:腰より少し下まで。胸の前だけV字に開けて、シャツとネクタイを見せる
             hipset = {'pelvis', 'spine_01', 'thigh_l', 'thigh_r'}
-            jhem = pz - 0.045
+            jhem = jhem_val
             def jacket_ok(vi):
                 if top_ok(vi, jhem): return True
                 return all(dom[i] in hipset for i in vi) and P[vi, 2].min() > jhem - 0.012
             v0 = pz + (0.24 if c['gender'] < 0.5 else 0.16)
             def in_v(vi):
                 m = cen(vi)
+                if c['gender'] < 0.5:
+                    # 女性:小さく丸い襟ぐり(ブラウスが見える)
+                    return m[1] < 0 and m[2] > neck_cut - 0.095 and abs(m[0]) < 0.065 * (0.55 + 0.45 * np.clip((m[2] - (neck_cut - 0.095)) / 0.095, 0, 1))
                 return m[1] < 0 and m[2] > v0 and abs(m[0]) < 0.008 + (m[2] - v0) * (0.20 if c['gender'] < 0.5 else 0.30)
             jk = [(vi, ti, 'Outer') for vi, ti in body_only if jacket_ok(vi) and not in_v(vi)]
-            shell('Outer', jk, 0.036, c['outer'], 0.9, smooth=80, drape=False, hem=jhem)
+            shell('Outer', jk, c.get('jpush', 0.036), c['outer'], 0.9, smooth=80, drape=False, hem=jhem)
             if c.get('tie'):
                 # ネクタイ:V字の中、シャツの前に貼る細長い板(結び目+剣先)
                 tie_mat = make_mat('Tie', c['tie'], 0.55); tie_mat.use_backface_culling = False
@@ -607,14 +612,16 @@ def main():
     ank = min(bones['foot_l']['head'][2], bones['foot_r']['head'][2])
     waist = bones['pelvis']['head'][2] + 0.09
     legset = {'pelvis', 'thigh_l', 'thigh_r', 'calf_l', 'calf_r', 'spine_01'}
-    pants = [(vi, ti) for vi, ti in body_only if all(dom[i] in legset for i in vi) and ank + 0.02 < P[vi, 2].mean() < ((pz - 0.045 + 0.025) if is_suit else (shirt_hem + 0.06))]
+    pants = [(vi, ti) for vi, ti in body_only if all(dom[i] in legset for i in vi) and ank + 0.02 < P[vi, 2].mean() < ((jhem_val + 0.025) if is_suit else (shirt_hem + 0.06))]
     suit = c.get('outer_kind') == 'suit'
     shell('Pants', [(vi, ti, 'Pants') for vi, ti in pants], 0.016 if suit else 0.012, c['pants'], 0.85, smooth=30 if suit else 8)
 
     if c.get('skirt'):
         # スカート:補助メッシュ(helper-skirt)を腰から膝上まで。下は黒いタイツ(ズボンの殻)
-        sk = [(vi, ti, 'Skirt') for vi, ti in groups['helper-skirt']]
-        shell('Skirt', sk, 0.022, c['skirt'], 0.85, smooth=14)
+        knee_z = float(bones['calf_l']['head'][2])
+        cut_z = knee_z + c.get('skirt_cut', -0.30)            # この高さより上の面だけ使う(=スカート丈)
+        sk = [(vi, ti, 'Skirt') for vi, ti in groups['helper-skirt'] if P[vi, 2].min() > cut_z]
+        shell('Skirt', sk, 0.022, c['skirt'], 0.85, smooth=14, hem=cut_z)
 
     # 服の下に隠れる体の面は消す(突き抜け防止)。開口部のまわり 2 リングは残す
     def interior(fl, rings=2):
