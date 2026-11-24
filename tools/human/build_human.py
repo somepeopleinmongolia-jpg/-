@@ -28,7 +28,7 @@ CHARS = {
     'prof_normal': C(age=0.74, muscle=0.42, weight=0.62, height=0.45, hair_gray=0.12, top=(0.93, 0.93, 0.91),
                      outer=(0.18, 0.19, 0.22), outer_kind='suit', tie=(0.12, 0.17, 0.36), pants=(0.17, 0.18, 0.21)),
     'prof_hotoke': C(age=0.84, muscle=0.35, weight=0.8, height=0.4, hair_gray=0.75, skin=(0.84, 0.66, 0.53),
-                     top=(0.95, 0.93, 0.88), outer=(0.70, 0.60, 0.44), outer_kind='suit', tie=(0.46, 0.14, 0.16), pants=(0.40, 0.32, 0.25)),
+                     top=(0.95, 0.93, 0.88), outer=(0.70, 0.60, 0.44), outer_kind='suit', tie=(0.46, 0.14, 0.16), pants=(0.24, 0.19, 0.15)),
     'prof_oni': C(age=0.66, muscle=0.5, weight=0.3, height=0.62, hair_gray=0.05, brow=0.85,
                   top=(0.96, 0.96, 0.95), outer=(0.07, 0.07, 0.09), outer_kind='suit', tie=(0.45, 0.06, 0.08),
                   pants=(0.07, 0.07, 0.09), shoes=(0.04, 0.04, 0.04)),
@@ -256,7 +256,7 @@ def main():
     sig = lambda x: 1 / (1 + np.exp(-x))
     dy = P[:, 1] - eyeC[1]; dz = P[:, 2] - eyeC[2]
     dx = np.abs(P[:, 0] - eyeC[0])
-    thr = 0.056 - 0.016 * np.clip(dx / 0.075, 0, 1) ** 1.5      # 中央が高く、こめかみで低い
+    thr = 0.043 - 0.013 * np.clip(dx / 0.075, 0, 1) ** 1.5      # 中央が高く、こめかみで低い(前髪は額の近くまで)
     hw = np.maximum.reduce([
         sig((dz - thr) / 0.0055) * sig((dy + 0.02) / 0.006),
         sig((dz - 0.030) / 0.004) * sig((dy - 0.034) / 0.004),
@@ -350,7 +350,7 @@ def main():
 
     # ---------------- 服・髪の殻
     Nrm = vertex_normals(P, [vi for vi, _, _ in body_faces])
-    def shell(name, face_list, push, rgb, rough=0.8, smooth=2, src_positions=None, taper=0, pmul=None, drape=False, hem=None):
+    def shell(name, face_list, push, rgb, rough=0.8, smooth=2, src_positions=None, taper=0, pmul=None, drape=False, hem=None, crotch=None):
         pos = (src_positions if src_positions is not None else P).copy()
         if drape:
             # 胸の一番前の点から下は、布がまっすぐ垂れる(谷間やアンダーバストに沿わない)。左右の端へは徐々に弱める
@@ -370,6 +370,17 @@ def main():
                 wz = min(1.0, max(0.0, (z - (az - span)) / 0.07)) * min(1.0, max(0.0, (az + 0.10 - z) / 0.05))
                 front = ay + max(0.0, az - z) * 0.10
                 pos[i, 1] = y + (front - y) * wx * wz * 0.92
+        if crotch:
+            # 股まわりの膨らみを平らにする(正面側の頂点を、帯の中の背面寄りの値へ寄せる)
+            z0_, z1_ = crotch
+            usedc = sorted({i for vi, _, _ in face_list for i in vi})
+            band_ = [i for i in usedc if abs(pos[i, 0]) < 0.075 and z0_ < pos[i, 2] < z1_ and pos[i, 1] < 0]
+            if band_:
+                ref = float(np.percentile([pos[i, 1] for i in band_], 80))
+                for i in band_:
+                    w = max(0.0, 1 - abs(pos[i, 0]) / 0.075) ** 0.5
+                    if pos[i, 1] < ref:
+                        pos[i, 1] += (ref - pos[i, 1]) * 0.95 * w
         Nl = vertex_normals(pos, [vi for vi, _, _ in face_list])
         pw = np.full(len(pos), 1.0)
         if taper:
@@ -436,16 +447,19 @@ def main():
     pz = bones['pelvis']['head'][2]
     neck_cut = max(bones['clavicle_l']['head'][2], bones['clavicle_r']['head'][2]) + 0.035
     legs_hands_head = {'thigh_l', 'thigh_r', 'calf_l', 'calf_r', 'foot_l', 'foot_r', 'ball_l', 'ball_r', 'head', 'hand_l', 'hand_r'}
-    def top_ok(vi):
+    is_suit = c.get('outer_kind') == 'suit'
+    shirt_hem = pz + (0.02 if is_suit else 0.075)       # シャツ・トップスの裾の高さ(まっすぐ)
+    def top_ok(vi, hz=None):
+        hz = shirt_hem if hz is None else hz
         cz = P[vi, 2].mean()
         doms = [dom[i] for i in vi]
         if any(d in legs_hands_head or d.startswith(('index', 'middle', 'ring', 'pinky', 'thumb')) for d in doms):
             return False
         if any(d == 'neck_01' for d in doms):
             return cz < neck_cut
-        return cz > pz - 0.05
+        return P[vi, 2].min() > hz - 0.012
     top_faces = [(vi, ti) for vi, ti in body_only if top_ok(vi)]
-    shell('Top', [(vi, ti, 'Top') for vi, ti in top_faces], 0.018, c['top'], 0.9, smooth=60, drape='full' if c.get('outer_kind') == 'suit' else True)
+    shell('Top', [(vi, ti, 'Top') for vi, ti in top_faces], 0.018, c['top'], 0.9, smooth=60, drape='full' if is_suit else True, hem=shirt_hem)
     # 羽織りもの:前開きの上着(open)/エプロン(apron)
     ok = c.get('outer_kind')
     if ok:
@@ -454,16 +468,16 @@ def main():
         if ok == 'suit':
             # 上着:腰より少し下まで。胸の前だけV字に開けて、シャツとネクタイを見せる
             hipset = {'pelvis', 'spine_01', 'thigh_l', 'thigh_r'}
+            jhem = pz - 0.045
             def jacket_ok(vi):
-                if top_ok(vi): return True
-                cz = P[vi, 2].mean()
-                return all(dom[i] in hipset for i in vi) and P[vi, 2].min() > pz - 0.13 and cz <= pz - 0.03
+                if top_ok(vi, jhem): return True
+                return all(dom[i] in hipset for i in vi) and P[vi, 2].min() > jhem - 0.012
             v0 = pz + 0.16
             def in_v(vi):
                 m = cen(vi)
                 return m[1] < 0 and m[2] > v0 and abs(m[0]) < 0.008 + (m[2] - v0) * 0.30
             jk = [(vi, ti, 'Outer') for vi, ti in body_only if jacket_ok(vi) and not in_v(vi)]
-            shell('Outer', jk, 0.036, c['outer'], 0.9, smooth=80, drape='full', hem=pz - 0.13)
+            shell('Outer', jk, 0.036, c['outer'], 0.9, smooth=80, drape='full', hem=jhem)
             if c.get('tie'):
                 # ネクタイ:V字の中、シャツの前に貼る細長い板(結び目+剣先)
                 tie_mat = make_mat('Tie', c['tie'], 0.55); tie_mat.use_backface_culling = False
@@ -500,7 +514,7 @@ def main():
     ank = min(bones['foot_l']['head'][2], bones['foot_r']['head'][2])
     waist = bones['pelvis']['head'][2] + 0.09
     legset = {'pelvis', 'thigh_l', 'thigh_r', 'calf_l', 'calf_r', 'spine_01'}
-    pants = [(vi, ti) for vi, ti in body_only if all(dom[i] in legset for i in vi) and ank + 0.02 < P[vi, 2].mean() < pz + (0.07 if c.get('outer_kind') == 'suit' else 0.03)]
+    pants = [(vi, ti) for vi, ti in body_only if all(dom[i] in legset for i in vi) and ank + 0.02 < P[vi, 2].mean() < ((pz - 0.045 + 0.025) if is_suit else (shirt_hem + 0.06))]
     suit = c.get('outer_kind') == 'suit'
     shell('Pants', [(vi, ti, 'Pants') for vi, ti in pants], 0.016 if suit else 0.012, c['pants'], 0.85, smooth=30 if suit else 8)
 
@@ -565,8 +579,8 @@ def main():
     style = c.get('hair_style', 'short')
     if style != 'buzz':
         hair_faces = [(vi, ti, 'Hair') for vi, ti in body_only if all(hw[i] > 0.9 for i in vi)]
-        crown = 1 + 1.6 * sig((dz - 0.08) / 0.015) + 0.6 * sig((dy - 0.06) / 0.015)
-        shell('Hair', hair_faces, 0.009, tuple(hair_rgb), 0.75, smooth=6, taper=3, pmul=crown)
+        crown = 1 + 1.2 * sig((dz - 0.08) / 0.015) + 0.5 * sig((dy - 0.06) / 0.015)
+        shell('Hair', hair_faces, 0.0045, tuple(hair_rgb), 0.75, smooth=8, taper=5, pmul=crown)
     if style == 'bob':
         # 補助メッシュの長髪を肩の上で切り、顔の前にかからない部分だけ使う
         shoulder = max(bones['clavicle_l']['head'][2], bones['clavicle_r']['head'][2]) + 0.07
