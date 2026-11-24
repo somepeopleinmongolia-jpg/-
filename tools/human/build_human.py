@@ -381,16 +381,18 @@ def main():
             used = sorted({i for vi, _, _ in face_list for i in vi})
             chest = [i for i in used if dom[i] == 'spine_03' and abs(newpos[i, 0]) < 0.2]
             ap = min(chest, key=lambda i: newpos[i, 1])
-            ay, az = newpos[ap, 1], newpos[ap, 2]
+            az = newpos[ap, 2]
+            # 基準の面:胸まわりの中央値(いちばん前の点ではなく)。張り出しはここまで押し戻される
+            band = [newpos[i, 1] for i in chest if abs(newpos[i, 0]) < 0.12 and az - 0.16 < newpos[i, 2] < az + 0.05]
+            ay = float(np.median(band)) if band else newpos[ap, 1]
             for i in used:
                 x, y, z = newpos[i]
                 if dom[i] not in ('spine_01', 'spine_02', 'spine_03', 'pelvis') or y >= 0:
                     continue
-                wx = min(1.0, max(0.0, 1 - (abs(x) - 0.10) / 0.10))
-                wz = min(1.0, max(0.0, (z - (az - 0.26)) / 0.06)) * min(1.0, max(0.0, (az + 0.04 - z) / 0.04))
-                front = ay + 0.004 + max(0.0, az - z) * 0.16
-                if y > front:
-                    newpos[i, 1] = y + (front - y) * wx * wz
+                wx = min(1.0, max(0.0, 1 - (abs(x) - 0.14) / 0.10))
+                wz = min(1.0, max(0.0, (z - (az - 0.21)) / 0.07)) * min(1.0, max(0.0, (az + 0.10 - z) / 0.05))
+                front = ay + max(0.0, az - z) * 0.10
+                newpos[i, 1] = y + (front - y) * wx * wz * 0.92
         # Taubin 平滑化(縮まずに細かい凹凸だけ消す)
         nbl = [list(nb[i]) for i in idx]
         for it in range(smooth * 2 if idx else 0):
