@@ -56,7 +56,7 @@ CHARS = {
                      'mouth/mouth-angles-up': 0.35, 'mouth/mouth-lowerlip-volume-incr': 0.15,
                      'eyebrows/eyebrows-trans-up': 0.15}),
     'mother': C(gender=0.0, age=0.8, muscle=0.4, weight=0.66, height=0.38, hair_style='bob', hair_gray=0.3,
-                top=(0.72, 0.56, 0.26), outer=(0.80, 0.36, 0.34), outer_kind='apron', pants=(0.36, 0.30, 0.25), brow=0.4),
+                top=(0.62, 0.46, 0.72), hem_off=0.0, skirt=(0.24, 0.20, 0.30), pants=(0.10, 0.09, 0.12), brow=0.4),
 }
 CHARS['professor'] = CHARS['prof_normal']
 
@@ -541,7 +541,7 @@ def main():
     legs_hands_head = {'thigh_l', 'thigh_r', 'calf_l', 'calf_r', 'foot_l', 'foot_r', 'ball_l', 'ball_r', 'head', 'hand_l', 'hand_r'}
     is_suit = c.get('outer_kind') == 'suit'
     jhem_val = pz + c.get('jhem_off', -0.045)           # 上着の裾の高さ(丈)
-    shirt_hem = (jhem_val + 0.005) if is_suit else pz + 0.075    # シャツ・トップスの裾の高さ(まっすぐ)
+    shirt_hem = (jhem_val + 0.005) if is_suit else pz + c.get('hem_off', 0.075)    # シャツ・トップスの裾の高さ(まっすぐ)
     def top_ok(vi, hz=None):
         hz = shirt_hem if hz is None else hz
         cz = P[vi, 2].mean()
