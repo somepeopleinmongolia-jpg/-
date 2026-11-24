@@ -4,6 +4,24 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>卒論ギリギリシミュレーター</title>
+<meta name="description" content="提出まであと10日、目標は1万字。書く・調べる・相談する・寝るをやりくりして卒論を書き上げる、スマホ向けのブラウザゲーム。エンディング9種。">
+<meta name="theme-color" content="#f1f7f2">
+<link rel="canonical" href="https://somepeopleinmongolia-jpg.github.io/-/">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="ja_JP">
+<meta property="og:site_name" content="卒論ギリギリシミュレーター">
+<meta property="og:title" content="卒論ギリギリシミュレーター">
+<meta property="og:description" content="提出まであと10日、目標は1万字。正気度と教授の信頼をやりくりして卒論を書き上げろ。エンディング9種。">
+<meta property="og:url" content="https://somepeopleinmongolia-jpg.github.io/-/">
+<meta property="og:image" content="https://somepeopleinmongolia-jpg.github.io/-/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="卒論ギリギリシミュレーター 提出まであと10日">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="卒論ギリギリシミュレーター">
+<meta name="twitter:description" content="提出まであと10日、目標は1万字。卒論を書き上げるスマホ向けゲーム。">
+<meta name="twitter:image" content="https://somepeopleinmongolia-jpg.github.io/-/og.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='27' fill='%23fffffb' stroke='%23e23a2e' stroke-width='6'/%3E%3Ctext x='32' y='44' font-size='32' text-anchor='middle' fill='%23e23a2e' font-family='sans-serif' font-weight='900'%3E%E3%80%86%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Shippori+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@500;700;900&display=swap" rel="stylesheet">
@@ -156,7 +174,18 @@ details.box textarea{width:100%;height:150px;margin-top:8px;font:inherit;font-si
 
 /* mock thesis */
 [hidden]{display:none!important}
-.paper{font-family:var(--f-doc);font-weight:500;font-size:15.5px;line-height:1.95;letter-spacing:.03em;white-space:pre-wrap;word-break:break-word;border:2px solid var(--ink);border-radius:8px;padding:14px 14px 16px;background-color:var(--card);background-image:repeating-linear-gradient(transparent 0 29px,var(--grid) 29px 30px);background-attachment:local;max-height:460px;overflow:auto}
+.paper{font-family:var(--f-doc);font-weight:500;font-size:15.5px;line-height:1.95;letter-spacing:.03em;word-break:break-word;border:2px solid var(--ink);border-radius:8px;padding:14px 14px 16px;background-color:var(--card);background-image:repeating-linear-gradient(transparent 0 29px,var(--grid) 29px 30px);background-attachment:local;max-height:460px;overflow:auto}
+.paper.raw{white-space:pre-wrap}
+.paper:not(.raw){background-image:none}
+.paper h4,.paper h5{margin:0;font-weight:700}
+.paper p,.paper ul{margin:0 0 6px}
+.paper ul{padding-left:1.3em}
+.paper .th-fict{font-family:var(--f-body);font-size:12px;font-weight:700;color:var(--pen);line-height:1.5;margin-bottom:10px}
+.paper .th-title{font-size:19px;line-height:1.5;text-align:center;margin-top:8px}
+.paper .th-sub{text-align:center;font-size:14px}
+.paper .th-meta{text-align:center;font-size:12.5px;color:var(--muted);line-height:1.7;margin:6px 0 12px}
+.paper h5{font-size:16px;margin-top:10px}
+.paper .th-tail{color:var(--muted);text-align:center;margin-top:16px}
 .note{font-size:12.5px;color:var(--muted);line-height:1.5}
 .th-msg{font-size:13px;font-weight:700;color:var(--pen)}
 
@@ -353,6 +382,15 @@ var ENDINGS=[
 ];
 var END_BY_ID={};ENDINGS.forEach(function(e){END_BY_ID[e.id]=e});
 
+/* 公開URL。claude.ai上やローカルファイルで開いたときは公開先のURLを使う */
+var CANON_URL='https://somepeopleinmongolia-jpg.github.io/-/';
+function shareURL(){
+  try{
+    if(/^https?:$/.test(location.protocol)&&!/(^|\.)(claude\.ai|claudeusercontent\.com|anthropic\.com)$/.test(location.hostname))return location.origin+location.pathname;
+  }catch(e){}
+  return CANON_URL;
+}
+
 /* ---------- state ---------- */
 var S=null, hist=[], root=null, themeText='';
 
@@ -533,7 +571,8 @@ function showActions(){
     wrap.appendChild(sb);
   }
   var hint=el('p','sub');
-  hint.textContent='今日はあと'+S.ap+'回動ける';
+  hint.textContent='今日はあと'+S.ap+'回動ける'+(S.san<30?'。正気度が危ない。そろそろ寝たほうがいい':'');
+  if(S.san<30)hint.style.color='var(--pen)';
   wrap.appendChild(hint);
   stage(wrap);
 }
@@ -647,7 +686,7 @@ function endGame(id,early){
   var rows=[];
   for(var i=0;i<hist.length;i+=5)rows.push(hist.slice(i,i+5).join(' '));
   var score=calcScore(id,early);
-  var text='【卒論ギリギリシミュレーター】\n'+E.em+' '+E.title+'(ランク'+E.rank+' / '+score+'点)\n『'+theme+'』\n'+fmt(S.chars)+'字 / '+fmt(GOAL)+'字 ・ '+when+'\n'+rows.join('\n')+'\n#卒論ギリギリシミュ #卒論';
+  var text='【卒論ギリギリシミュレーター】\n'+E.em+' '+E.title+'(ランク'+E.rank+' / '+score+'点)\n『'+theme+'』\n'+fmt(S.chars)+'字 / '+fmt(GOAL)+'字 ・ '+when+'\n'+rows.join('\n')+'\n'+shareURL()+'\n#卒論ギリギリシミュ #卒論';
   var enc=encodeURIComponent(text);
   setRoot(
     '<main class="result">'+
@@ -675,15 +714,20 @@ function endGame(id,early){
         '<a class="btn" id="line" href="https://line.me/R/share?text='+enc+'" target="_blank" rel="noopener noreferrer">LINEで送る</a>'+
       '</div>'+
       '<details class="box" id="tbox"><summary>シェア用テキストを表示</summary><textarea id="ttxt" readonly></textarea></details>'+
-      '<section class="card" id="thesis" hidden>'+
+      '<section class="card" id="thesis">'+
         '<span class="tag">模擬卒論</span>'+
-        '<h3 class="ev-title" style="font-size:20px">この結果で、卒論を書いてもらう</h3>'+
-        '<p class="ev-body">テーマとスコアに合わせて、Claudeが短い卒論を書きます。出来はプレイ結果しだいです。</p>'+
-        '<button class="btn primary" id="gen" type="button">卒論を書いてもらう</button>'+
+        '<h3 class="ev-title" style="font-size:20px">この結果で書けた卒論</h3>'+
+        '<p class="ev-body">テーマとプレイ結果から、ゲームが模擬卒論を組み立てます。出来はエンディングしだいです。</p>'+
+        '<p class="th-msg">内容・数値・文献はすべて架空です。実在の論文や人物とは関係ありません。</p>'+
+        '<button class="btn primary" id="gen" type="button">卒論を読む</button>'+
         '<div class="th-msg" id="thmsg" hidden></div>'+
-        '<div class="paper" id="paper" hidden></div>'+
-        '<div class="share-btns" id="paperbtns" hidden><button class="btn" id="pcopy" type="button">コピー</button><button class="btn" id="psave" type="button">.mdで保存</button></div>'+
-        '<p class="note">ゲーム内で生成した模擬卒論です。内容、数値、文献はすべて架空で、実際の提出には使えません。</p>'+
+        '<article class="paper" id="paper" aria-label="模擬卒論" hidden></article>'+
+        '<div class="share-btns" id="paperbtns" hidden>'+
+          '<button class="btn" id="pcopy" type="button">コピー</button><button class="btn" id="psave" type="button">.mdで保存</button>'+
+          '<button class="btn ghost full" id="regen" type="button" hidden>別の書き方で読む</button>'+
+          '<button class="btn ghost full" id="ai" type="button" hidden>Claudeに書き直してもらう</button>'+
+        '</div>'+
+        '<p class="note">ゲーム内で作った模擬卒論です。実際の提出には使えません。</p>'+
       '</section>'+
       '<button class="btn primary" id="again" type="button">もう一回やる</button>'+
       '<details class="box"><summary>エンディング図鑑</summary><div style="margin-top:10px">'+collectionHTML()+'</div></details>'+
@@ -692,14 +736,15 @@ function endGame(id,early){
   $('#ttxt').value=text;
   $('#copy').onclick=function(){copyText(text,this)};
   $('#again').onclick=function(){renderTitle()};
-  setupThesis(E,ctx,score,theme,when);
+  setupThesis(E,ctx,score,theme);
   jingle(!!E.good);
 }
 
 function calcScore(id,early){
   var sc=Math.min(S.chars/GOAL,1)*40+S.q*0.35+S.trust*0.15+S.san*0.1-S.sus*10+(early>=2?5:0);
-  if(id==='burnout')sc=Math.min(sc,35);
-  if(id==='blank')sc=Math.min(sc,5);
+  /* ランクとスコアが食い違わないよう、結末ごとに上限を置く */
+  var CAP={repeat:45,sus:40,burnout:35,blank:5,mercy:69,charsonly:69};
+  if(CAP[id]!=null)sc=Math.min(sc,CAP[id]);
   return clamp(Math.round(sc),0,100);
 }
 
@@ -715,18 +760,220 @@ var STYLE_BY_END={
   blank:'表紙とタイトルのみ。本文は「はじめに」の1〜2行だけで、あとは空白。'
 };
 
-function setupThesis(E,ctx,score,theme,when){
-  var sec=$('#thesis');
-  if(!sec||!window.claude||!window.claude.use)return;
-  var snap={chars:S.chars,q:S.q,trust:S.trust,san:S.san,sus:S.sus};
-  var last='';
+/* ---------- mock thesis generator (no AI) ----------
+   テーマ・エンディング・スコア・ステータスから、テンプレートと語彙の組み合わせで
+   模擬卒論を組み立てる。内容と数値はすべて架空。実在の論文・人物は出さない。 */
+function mulberry(seed){var a=seed>>>0;return function(){a=(a+0x6D2B79F5)|0;var t=Math.imul(a^(a>>>15),1|a);t=(t+Math.imul(t^(t>>>7),61|t))^t;return ((t^(t>>>14))>>>0)/4294967296}}
+
+function parseTheme(theme){
+  var full=String(theme||'').trim();
+  var has=!!full&&full!=='無題の卒論';
+  var core=full.replace(/[\s　]*(に関する|についての|をめぐる|に向けた|の)?(基礎的な?|実証的な?)?(研究|一考察|考察|検討|分析|調査)$/,'')||full;
+  var kind=/実験|細胞|植物|藻|菌|遺伝|酵素|タンパク|化学|材料|合成|測定|光合成|培養|物性|反応|生育|土壌|水質|葉緑体/.test(full)?'exp':
+    /意識|学生|若者|調査|消費|SNS|行動|満足|働き方|地域|観光|教育|購買|心理|コミュニケーション|アンケート/.test(full)?'survey':
+    /文学|歴史|作品|思想|小説|史料|文化|言説|表象|宗教|哲学|映画|漫画|アニメ|和歌|俳句/.test(full)?'lit':'data';
+  return {full:has?full:'無題の卒論',has:has,core:core,Q:has?'「'+core+'」':'本テーマ',kind:kind};
+}
+
+var TH_KIND={
+  exp:{how:'実験',angle:'条件の違い',claim:'条件によって{変わりうる|大きく変化する}',
+    m:['試料を{g}つの条件に分け、それぞれ{r}回ずつ測定を行った。','測定は同じ手順と時間帯でそろえ、{対照区|比較用の条件}を設けた。','得られた値は平均値と標準偏差で整理し、条件間の差を分散分析で検定した。'],
+    r:'条件Bでは対照区と比べて値が{pct}%高くなり、その差は統計的に有意であった({p})。',
+    r2:'一方、条件Cでは{明確な差はみられなかった|ばらつきが大きく、傾向は読み取れなかった}。'},
+  survey:{how:'アンケート調査',angle:'人々の意識と行動',claim:'回答者の属性によって受け止め方が異なる',
+    m:['大学生{n}名を対象に、Webアンケートを実施した。','質問は{k}項目で、多くは5段階で回答してもらった。','自由記述は内容ごとに分類し、出現数を数えた。'],
+    r:'{Q}に関する項目では、肯定的な回答が全体の{pct}%を占め、学年による差もみられた({p})。',
+    r2:'自由記述では「時間」「お金」「なんとなく」に関する記述が{多かった|目立った}。'},
+  lit:{how:'資料の読解',angle:'記述の変化',claim:'時期によって語られ方が異なる',
+    m:['関連する資料{n}点を集め、年代順に並べた。','それぞれの資料について、{a}つの観点から記述の特徴を整理した。','観点ごとに出現する語を数え、時期ごとに比べた。'],
+    r:'後期の資料ほど{Q}に関する記述が増え、全体の{pct}%を占めていた。',
+    r2:'ただし、表現の調子は資料によって{ばらつきが大きかった|かなり異なっていた}。'},
+  data:{how:'記録データの分析',angle:'量的な傾向',claim:'ほかの要因と強く結びついている',
+    m:['{n}件の記録を集め、{k}個の変数に整理した。','欠けている値のある記録は除き、残りを分析の対象とした。','変数どうしの関係を相関分析と重回帰分析で調べた。'],
+    r:'{Q}に関わる指標は、ほかの変数と比べて強い相関を示した(r = 0.{rr}, {p})。',
+    r2:'一方、季節による違いは{ほとんどみられなかった|小さかった}。'}
+};
+
+var TH_CRAZY=['考察する。考察とは何か。','今日の夕飯はカレーうどんにしたい。','この結果には、たぶん猫が関係している。','締切は存在しない。存在しないものは守れない。','ねむい。ねむいねむいねむい。','ここまで書いて、保存したか不安になった。Ctrl+S。Ctrl+S。','先行研究によれば、布団はあたたかい。','p < 0.05。pとは何か。0.05とは何か。','窓の外が明るい。いつから朝なのか。','図1はあとで描く。図1とは何だったか。'];
+var TH_PADS=['前述のとおり、','繰り返しになるが、','すなわち、','換言すれば、','言い換えると、','改めて述べると、'];
+var TH_FILL=['この点は非常に重要であり、重要であるがゆえに重要である。','以上のことから、以上のことが言える。','これについては後ほど詳しく述べる。','ここで改めて本研究の目的を確認しておきたい。','本節では、本節の内容について述べる。'];
+
+function makeThesis(o){
+  var R=mulberry(o.seed||1);
+  var P=function(a){return a[Math.floor(R()*a.length)]};
+  var N=function(a,b){return Math.floor(R()*(b-a+1))+a};
+  var tp=parseTheme(o.theme), K=TH_KIND[tp.kind], id=o.end;
+  var V={Q:tp.Q,q2:'本テーマ',how:K.how,angle:K.angle,
+    n:tp.kind==='survey'?N(48,320):tp.kind==='lit'?N(18,64):N(120,900),
+    k:N(5,14),a:N(3,6),g:N(3,4),r:N(3,6),pct:N(18,64),rr:N(42,78),early:o.early||0,
+    p:o.q<30?'p ≈ 0.05くらい':'p = '+P(['0.003','0.012','0.021','0.034','0.041'])};
+  V.n2=Math.max(3,Math.round(V.n*0.3));
+  function f(s){
+    s=s.replace(/\{([^{}]*\|[^{}]*)\}/g,function(_,a){return P(a.split('|'))});
+    s=s.replace(/\{claim\}/g,K.claim).replace(/\{([^{}]*\|[^{}]*)\}/g,function(_,a){return P(a.split('|'))});
+    return s.replace(/\{(\w+)\}/g,function(_,k){return V[k]!=null?V[k]:''});
+  }
+  function F(a){return a.map(f)}
+  function pad(arr){var out=[];arr.forEach(function(s){out.push(s);out.push(P(TH_PADS)+s);if(R()<0.55)out.push(P(TH_FILL))});return out}
+
+  var M=F(K.m), Rr=f(K.r), Rr2=f(K.r2);
+  var I_GOOD=F(['{Q}は、身近でありながら、まだ十分に調べられていないテーマである。','{先行研究の多くは全体の傾向を述べるにとどまり|これまでの議論は全体の傾向に集中しており}、{angle}に注目した検討は少ない。','そこで本研究では、{how}によって{q2}を{angle}の観点から検討し、その特徴を明らかにすることを目的とする。']);
+  var I_MID=F(['{Q}は、私たちの生活にも関わりのあるテーマである。','本研究では、{how}によって{Q}の傾向を明らかにすることを目的とする。']);
+  var D_GOOD=F(['この結果は、{Q}が{claim}ことを示している。','{先行研究|従来の議論}で述べられてきた全体の傾向は、条件を分けてみると一様ではない可能性がある。','ただし、対象の数と範囲は限られており、結果をそのまま一般化することはできない。','今後は対象を広げ、ほかの方法でも同じ結果が得られるかを確かめたい。']);
+  var D_MID=F(['この結果から、{Q}にはある程度の傾向があると考えられる。','ただし、対象が限られているため、さらなる検討が必要である。']);
+  var C_GOOD=F(['本研究では、{how}によって{Q}を検討した。','その結果、{q2}は{claim}ことが明らかとなった。','本研究の結果は、{q2}を考える際の基礎的な資料になると考えられる。']);
+  var C_MID=F(['本研究では、{Q}について{how}を行い、一定の傾向を確かめた。','今後の課題として、対象を広げた検討が挙げられる。']);
+  var A_GOOD=F(['本研究では、{Q}について、{how}による検討を行った。']).concat([Rr],F(['これらの結果から、{q2}は{claim}ことが示唆された。']));
+  var ACK=o.trust>=70?'本研究を進めるにあたり、終始あたたかくご指導いただいた指導教員に深く感謝する。':o.trust<30?'本研究を進めるにあたり、ご指導いただいた(はずの)指導教員に感謝する。':'本研究を進めるにあたり、ご指導いただいた指導教員に感謝する。';
+
+  var d={title:tp.full,sub:'',secs:[],tail:''};
+  function sec(h,p,li){d.secs.push({h:h,p:p||[],li:li||null})}
+  var H=['要旨','1 はじめに','2 方法','3 結果','4 考察','5 おわりに','謝辞'];
+
+  if(id==='early'||id==='excellent'){
+    d.sub='—'+K.angle+'に着目して—';
+    sec(H[0],A_GOOD);
+    sec(H[1],I_GOOD.concat(f('仮説として、{q2}は{claim}と考えた。')));
+    sec(H[2],M);
+    sec(H[3],[Rr,Rr2,'主な結果を図1と表1にまとめた。']);
+    sec(H[4],D_GOOD.slice(0,2).concat(f('本研究の新しさは、{q2}を{angle}という具体的な切り口で捉え直した点にある。'),D_GOOD.slice(2)));
+    var c=C_GOOD.slice();
+    if(id==='early')c.push(f('なお、本稿は締切の{early}日前に提出された。計画的に進めることも、研究の一部である。'));
+    sec(H[5],c);sec(H[6],[ACK]);
+  }else if(id==='graduate'){
+    sec(H[0],[A_GOOD[0],Rr]);
+    sec(H[1],I_MID);sec(H[2],M);sec(H[3],[Rr,'結果を図1に示す。']);
+    sec(H[4],o.q>=65?[D_GOOD[0]].concat(D_MID.slice(1)):D_MID);
+    sec(H[5],C_MID);sec(H[6],[ACK]);
+  }else if(id==='charsonly'){
+    d.title=tp.has?tp.core+'に関する研究についての一考察':'無題の卒論についての一考察';
+    sec(H[0],pad([A_GOOD[0],Rr]));
+    sec(H[1],pad(I_MID));sec(H[2],pad(M.slice(0,2)));sec(H[3],pad([Rr]));
+    sec(H[4],pad(D_MID));sec(H[5],pad(C_MID).concat('以上で、本研究を終わる。前述のとおり、以上で本研究を終わる。'));
+  }else if(id==='mercy'){
+    sec(H[0],[A_GOOD[0],Rr,'詳しい考察は今後の課題としたい。']);
+    sec(H[1],I_GOOD);sec(H[2],M);sec(H[3],[Rr,'(図1は準備中)']);
+    sec(H[4],[D_MID[0],'ただし、その理由については今後の課題としたい。','また、先行研究との比較も今後の課題としたい。','方法の妥当性についても、今後の課題としたい。']);
+    sec(H[5],['本研究では多くの課題が残ったが、それらはすべて今後の課題としたい。']);
+    sec(H[6],[ACK]);
+  }else if(id==='repeat'){
+    sec(H[0],['(あとで書く)']);
+    sec(H[1],I_MID);sec(H[2],[M[0],'(手順の詳細はあとで書く)']);
+    sec(H[3],[],[f('データは途中まで取れた(n = {n2})'),'図1(作成予定)','表1(あとで貼る)','有意差:たぶんある']);
+    sec(H[4],[],['なぜこうなったか → 考え中','先行研究との比較 → ここに書く','']);
+    d.tail='(以下、未完)';
+  }else if(id==='sus'){
+    sec(H[0],F(['本稿は、{Q}をめぐる従来の議論を批判的に検討し、その多面的な含意を明らかにするものである。']).concat([Rr]));
+    sec(H[1],F(['{Q}について、前から少し気になっていたので調べてみることにした。','ネットで検索すると色々出てきたが、正直むずかしくてよく分からなかった。','なので、自分なりに{how}をやってみようと思う。']));
+    sec(H[2],['とりあえず、'+M[0],'やり方は、研究室の先輩に聞いて決めた。']);
+    sec(H[3],F(['得られた知見は、{Q}をめぐる従来の議論に対し、多層的かつ包括的な再解釈を迫るものである。']).concat([Rr,'とりわけ、当該現象の背後にある構造的要因は、看過し得ない理論的含意を有している。']));
+    sec(H[4],F(['以上の分析を踏まえると、{Q}は単一の要因に還元し得ない複合的な現象として把握されるべきである。','本稿の枠組みは、既存の研究潮流を批判的に継承しつつ、その射程を拡張する試みとして位置づけられる。']).concat('※この章から文体が急に変わったのは、気のせいである。'));
+    sec(H[5],F(['本稿は、{Q}に関する包括的な検討を通じて、新たな分析視角を提示した。']).concat('(指導教員のメモ:この章の構成、研究室の過去の卒論とよく似ていませんか?)'));
+  }else if(id==='burnout'){
+    var cz=[];var pool=TH_CRAZY.slice();
+    for(var i=0;i<5;i++)cz.push(pool.splice(Math.floor(R()*pool.length),1)[0]);
+    sec(H[0],[A_GOOD[0],'結果は、ね']);
+    sec(H[1],I_MID);sec(H[2],M);
+    sec(H[3],[Rr,'なお、図1は夢の中で見た。',cz[0]]);
+    sec(H[4],[D_MID[0].replace('考えられる','考えられる、と思う、たぶん'),cz[1],cz[2],cz[3]]);
+    sec(H[5],[f('本研究では、{Q}について'),cz[4].slice(0,6)+'……']);
+    d.tail='(原稿はここで途切れている)';
+  }else{ /* blank */
+    sec(H[0],['(未記入)']);
+    sec(H[1],['本研究では、']);
+    d.tail='(以下、白紙)';
+  }
+
+  /* ステータスによる小さな味付け */
+  if(o.san<25&&id!=='burnout'&&id!=='blank'){
+    var ds=d.secs.filter(function(s){return s.h===H[4]})[0];
+    if(ds)ds.p.push('※この段落は午前4時に書いた。'+P(TH_CRAZY));
+  }
+  if(o.sus>0&&id!=='sus'&&id!=='blank'){
+    var dr=d.secs.filter(function(s){return s.h===H[3]})[0];
+    if(dr)dr.p.push('(本節には、文体が不自然に整っている箇所がある)');
+  }
+  d.meta=['〇〇大学 〇〇学部 4年','提出者:あなた / 指導教員:〇〇先生','ゲーム内の字数 '+fmt(o.chars)+'字 ・ '+o.title+'('+o.score+'点)'];
+  return d;
+}
+
+var TH_NOTICE='※ゲームが作った架空の卒論です。内容・数値・文献はすべて実在しません。';
+function thesisHTML(d){
+  var h='<p class="th-fict">'+esc(TH_NOTICE)+'</p>';
+  h+='<h4 class="th-title">'+esc(d.title)+'</h4>';
+  if(d.sub)h+='<p class="th-sub">'+esc(d.sub)+'</p>';
+  h+='<p class="th-meta">'+d.meta.map(esc).join('<br>')+'</p>';
+  d.secs.forEach(function(s){
+    h+='<h5>■ '+esc(s.h)+'</h5>';
+    if(s.p.length)h+='<p>'+s.p.map(esc).join('')+'</p>';
+    if(s.li)h+='<ul>'+s.li.map(function(x){return '<li>'+(x?esc(x):'&nbsp;')+'</li>'}).join('')+'</ul>';
+  });
+  if(d.tail)h+='<p class="th-tail">'+esc(d.tail)+'</p>';
+  return h;
+}
+function thesisText(d){
+  var t='# '+d.title+'\n'+(d.sub?d.sub+'\n':'')+'\n'+TH_NOTICE+'\n\n'+d.meta.join('\n')+'\n';
+  d.secs.forEach(function(s){
+    t+='\n## '+s.h+'\n\n';
+    if(s.p.length)t+=s.p.join('')+'\n';
+    if(s.li)t+=s.li.map(function(x){return '- '+x}).join('\n')+'\n';
+  });
+  if(d.tail)t+='\n'+d.tail+'\n';
+  return t;
+}
+
+function saveFile(name,text,say){
+  function blob(){
+    try{
+      var u=URL.createObjectURL(new Blob([text],{type:'text/markdown;charset=utf-8'}));
+      var a=document.createElement('a');a.href=u;a.download=name;a.rel='noopener';
+      document.body.appendChild(a);a.click();
+      setTimeout(function(){URL.revokeObjectURL(u);if(a.parentNode)a.parentNode.removeChild(a)},1500);
+    }catch(e){say('保存できませんでした。コピーを使ってください。')}
+  }
+  if(window.claude&&window.claude.use){
+    window.claude.use('downloads').then(function(dl){
+      if(!dl)return blob();
+      return dl.save({filename:name,data:text}).catch(function(e){if(!e||e.code!=='declined')blob()});
+    }).catch(blob);
+  }else blob();
+}
+
+function setupThesis(E,ctx,score,theme){
+  var sec=$('#thesis');if(!sec)return;
+  var snap={theme:theme,end:E.id,title:E.title,score:score,early:ctx.early,chars:S.chars,q:S.q,trust:S.trust,san:S.san,sus:S.sus};
+  var gen=$('#gen'),paper=$('#paper'),msg=$('#thmsg'),btns=$('#paperbtns'),aiBtn=$('#ai');
+  var last='',seed=(Date.now()^Math.floor(Math.random()*1e9))>>>0;
+  function say(t){msg.textContent=t;msg.hidden=!t}
+  function show(){
+    var d=makeThesis(Object.assign({seed:seed},snap));
+    last=thesisText(d);
+    paper.classList.remove('raw');paper.innerHTML=thesisHTML(d);paper.hidden=false;paper.scrollTop=0;btns.hidden=false;
+  }
+  gen.onclick=function(){
+    gen.disabled=true;gen.textContent='執筆中…';say('');
+    blip(440,0.08,'square',0.03);
+    setTimeout(function(){show();gen.hidden=true;$('#regen').hidden=false},700);
+  };
+  $('#regen').onclick=function(){seed=(seed*1103515245+12345)>>>0;say('');show()};
+  $('#pcopy').onclick=function(){
+    var b=this,l=b.textContent;
+    function ok(){b.textContent='コピーしました';setTimeout(function(){b.textContent=l},1800)}
+    function manual(){
+      try{var r=document.createRange();r.selectNodeContents(paper);var s=window.getSelection();s.removeAllRanges();s.addRange(r)}catch(e){}
+      b.textContent='選択しました。コピーしてください';setTimeout(function(){b.textContent=l},2800);
+    }
+    try{if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(last).then(ok,manual);else manual()}catch(e){manual()}
+  };
+  $('#psave').onclick=function(){saveFile('模擬卒論.md',last,say)};
+
+  /* claude.ai上で開いたときだけ:Claudeに書き直してもらう(任意) */
+  if(!window.claude||!window.claude.use)return;
   window.claude.use('sample').then(function(sample){
     if(!sample)return;
-    sec.hidden=false;
-    var gen=$('#gen'),paper=$('#paper'),msg=$('#thmsg'),btns=$('#paperbtns');
-    function say(t){msg.textContent=t;msg.hidden=!t}
-    gen.onclick=function(){
-      gen.disabled=true;gen.textContent='執筆中…';say('');paper.hidden=false;paper.textContent='';btns.hidden=true;
+    aiBtn.hidden=false;
+    aiBtn.onclick=function(){
+      aiBtn.disabled=true;aiBtn.textContent='Claudeが執筆中…';say('');paper.hidden=false;paper.classList.add('raw');paper.textContent='';btns.hidden=true;
       var prompt='あなたは卒論ゲームの「模擬卒論ジェネレーター」です。プレイ結果に合わせて、短い日本語の模擬卒論を書いてください。\n\n'+
         '【卒論のテーマ】'+theme+'\n'+
         '【結果】'+E.title+'(ランク'+E.rank+'、'+score+'点/100点)\n'+
@@ -738,32 +985,11 @@ function setupThesis(E,ctx,score,theme,when){
         '- マークダウン記法(#や**)は使わず、プレーンテキストで書く。\n'+
         '- 数値や結果は架空のものとして控えめに書く。実在の論文、人物、団体、URLは出さない。参考文献欄は作らない。\n'+
         '- 前置きや解説は書かず、卒論の本文だけを出力する。';
-      sample(prompt,{modelTier:'default',cache:false,onText:function(o){paper.textContent=o.text}}).then(function(r){
-        last=r.text;paper.textContent=r.text;btns.hidden=false;gen.disabled=false;gen.textContent='書き直してもらう';
-      }).catch(function(e){
-        if(e&&e.text){last=e.text;paper.textContent=e.text;btns.hidden=false}
-        else paper.hidden=true;
-        say(e&&e.code==='rate_limited'?'混み合っています。少し待ってからもう一度押してください。':'卒論を書けませんでした。もう一度押してください。');
-        gen.disabled=false;gen.textContent='もう一度書いてもらう';
+      var done=function(t){last=TH_NOTICE+'\n\n'+t;paper.textContent=last;btns.hidden=false;aiBtn.disabled=false;aiBtn.textContent='Claudeにもう一度書いてもらう'};
+      sample(prompt,{modelTier:'default',cache:false,onText:function(o){paper.textContent=TH_NOTICE+'\n\n'+o.text}}).then(function(r){done(r.text)}).catch(function(e){
+        if(e&&e.text)done(e.text);else{aiBtn.disabled=false;aiBtn.textContent='Claudeに書き直してもらう';show()}
+        say(e&&e.code==='rate_limited'?'混み合っています。少し待ってからもう一度押してください。':'Claudeが書けませんでした。ゲーム版の卒論を表示しています。');
       });
-    };
-    $('#pcopy').onclick=function(){
-      var b=this,l=b.textContent;
-      function ok(){b.textContent='コピーしました';setTimeout(function(){b.textContent=l},1800)}
-      function manual(){
-        try{var r=document.createRange();r.selectNodeContents(paper);var s=window.getSelection();s.removeAllRanges();s.addRange(r)}catch(e){}
-        b.textContent='選択しました。コピーしてください';setTimeout(function(){b.textContent=l},2800);
-      }
-      try{if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(last).then(ok,manual);else manual()}catch(e){manual()}
-    };
-    $('#psave').onclick=function(){
-      var b=this;
-      window.claude.use('downloads').then(function(d){
-        if(!d){say('この画面では保存できません。コピーを使ってください。');return}
-        return d.save({filename:'模擬卒論.md',data:'# '+theme+'\n\n(ゲーム内で生成した模擬卒論。内容・数値・文献はすべて架空)\n\n'+last+'\n'}).catch(function(e){
-          if(!e||e.code!=='declined')say('保存できませんでした。コピーを使ってください。');
-        });
-      }).catch(function(){say('保存できませんでした。コピーを使ってください。')});
     };
   }).catch(function(){});
 }
