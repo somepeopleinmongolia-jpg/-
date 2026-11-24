@@ -207,6 +207,7 @@ details.box textarea{width:100%;height:150px;margin-top:8px;font:inherit;font-si
 .card.rar-SSR{box-shadow:5px 5px 0 var(--pen)}
 .lab-em{font-size:40px;line-height:1}
 .lab-prof{font-size:14px;font-weight:900}
+.lab-type{display:inline-block;margin-left:8px;vertical-align:middle;font-family:var(--f-body);font-size:13px;font-weight:900;border:2px solid var(--ink);border-radius:6px;padding:0 7px;background:var(--marker)}
 .lab-fx{margin:0;padding-left:1.2em;font-size:14px;font-weight:700;display:flex;flex-direction:column;gap:2px}
 .stats .star{color:var(--pen);letter-spacing:.04em}
 .stats div.wide{grid-column:1 / -1}
@@ -412,43 +413,46 @@ var END_BY_ID={};ENDINGS.forEach(function(e){END_BY_ID[e.id]=e});
    最初に研究室を引き、先生の厳しさと研究室の空気を決める。研究室・先生はすべて架空 */
 var LAB_BASE={san:70,trust:40,q:10,tg:1,qg:1,ask:0.6,askQ:1,absent:0,detect:0.5,susT:40,mercy:65,exTrust:65,wm:1,wc:0,night:0};
 var LABS=[
-  {id:'hotoke',rar:'SSR',w:6,em:'🪷',name:'仏の研究室',prof:'何を出しても「いいね」と言う先生',strict:1,
+  {id:'hotoke',rar:'SSR',w:6,em:'🪷',name:'仏',prof:'何を出しても「いいね」と言う先生',strict:1,
     desc:'相談すればだいたい褒めてもらえる。締切だけは延びない。',
     fx:['相談の成功率が高い(85%)','信頼が上がりやすい','温情のハードルが低い'],
     ack:'どんな原稿にも「いいね」と言ってくださった指導教員に深く感謝する。',
     m:{san:80,trust:55,tg:1.3,ask:0.85,mercy:50,susT:30}},
-  {id:'oni',rar:'SR',w:12,em:'🖍️',name:'鬼の赤ペン研',prof:'原稿が真っ赤になって返ってくる先生',strict:5,
+  {id:'oni',rar:'SR',w:12,em:'🖍️',name:'鬼の赤ペン',prof:'原稿が真っ赤になって返ってくる先生',strict:5,
     desc:'褒められることはまずない。ただ、相談するたびに確実に良くなる。',
     fx:['相談の成功率が低い(40%)','相談で研究の質が大きく上がる','信頼が上がりにくい・初期信頼30','不正はすぐ見抜かれる','温情はほぼ期待できない'],
     ack:'毎回の原稿を真っ赤にして返してくださった指導教員に感謝する。',
     m:{trust:30,tg:0.7,qg:1.1,ask:0.4,askQ:1.6,detect:0.8,susT:60,mercy:80,exTrust:60}},
-  {id:'taiiku',rar:'SR',w:10,em:'💪',name:'体育会系研',prof:'「気合いで書け」が口ぐせの先生',strict:4,
+  {id:'taiiku',rar:'SR',w:10,em:'💪',name:'体育会系',prof:'「気合いで書け」が口ぐせの先生',strict:4,
     desc:'書く量は増えるが、消耗も激しい。',
     fx:['書ける字数が1.2倍','書くたびに正気度が余分に減る'],
     ack:'「気合いで書け」と励まし続けてくださった指導教員に感謝する。',
     m:{san:75,wm:1.2,wc:3}},
-  {id:'core',rar:'R',w:16,em:'⏰',name:'コアタイム厳守研',prof:'朝9時に必ず点呼をとる先生',strict:4,
+  {id:'core',rar:'R',w:16,em:'⏰',name:'コアタイム厳守',prof:'朝9時に必ず点呼をとる先生',strict:4,
     desc:'毎日決まった時間に研究室へ。研究は進むが、夜ごとに少し削れる。',
     fx:['研究の質が上がりやすい・初期の質18','毎晩、正気度が4減る','温情のハードルが高め'],
     ack:'毎朝の点呼で生活を整えてくださった指導教員に感謝する。',
     m:{q:18,qg:1.15,night:-4,mercy:70}},
-  {id:'absent',rar:'R',w:14,em:'✈️',name:'ほぼ不在研',prof:'いつも出張中の先生',strict:2,
+  {id:'absent',rar:'R',w:14,em:'✈️',name:'ほぼ不在',prof:'いつも出張中の先生',strict:2,
     desc:'相談しようにも、教授室はだいたい空。見られていない分、ごまかしは効きやすい。',
     fx:['相談の40%は不在で空振り','不正は見抜かれにくい','初期信頼50'],
     ack:'出張先からメールでご指導いただいた指導教員に感謝する。',
     m:{trust:50,absent:0.4,detect:0.3,susT:25,mercy:60}},
-  {id:'yuru',rar:'N',w:20,em:'🌿',name:'ゆるふわ放任研',prof:'「好きにやっていいよ」の先生',strict:1,
+  {id:'yuru',rar:'N',w:20,em:'🌿',name:'ゆるふわ放任',prof:'「好きにやっていいよ」の先生',strict:1,
     desc:'口出しはほぼない。その分、研究の質は自分で上げるしかない。',
     fx:['初期正気度85・初期信頼50','研究の質が上がりにくい','温情のハードルが低め'],
     m:{san:85,trust:50,qg:0.85,mercy:55,susT:30}},
-  {id:'normal',rar:'N',w:22,em:'🏫',name:'ふつうの研究室',prof:'週1でゼミをする先生',strict:3,
+  {id:'normal',rar:'N',w:22,em:'🏫',name:'ふつう',prof:'週1でゼミをする先生',strict:3,
     desc:'可もなく不可もなく。いちばん標準的な難しさ。',
     fx:['特別なことは何もない'],
     m:{}}
 ];
+/* 研究室の名字は毎回ランダム(よくある名字から。特定の人物ではない) */
+var SURNAMES=['佐藤','鈴木','高橋','田中','伊藤','渡辺','山本','中村','小林','加藤','吉田','山田','佐々木','山口','松本','井上','木村','林','斎藤','清水','山崎','森','池田','橋本','阿部','石川','山下','中島','石井','小川','前田','岡田','長谷川','藤田','後藤','近藤','村上','遠藤','青木','坂本'];
 var LAB_BY_ID={};LABS.forEach(function(l){LAB_BY_ID[l.id]=l});
 var L=null; /* いまの研究室(LAB_BASEと合成済み) */
-function labOf(id){var l=LAB_BY_ID[id]||LAB_BY_ID.normal;var o=Object.assign({},LAB_BASE,l.m);o.lab=l;return o}
+function labOf(id,sur){var l=LAB_BY_ID[id]||LAB_BY_ID.normal;var o=Object.assign({},LAB_BASE,l.m);o.lab=l;o.sur=sur||'〇〇';o.labName=o.sur+'研';return o}
+function rollSur(prev){var s;do{s=pick(SURNAMES)}while(s===prev);return s}
 function rollLab(){var t=0;LABS.forEach(function(l){t+=l.w});var r=Math.random()*t;for(var i=0;i<LABS.length;i++){r-=LABS[i].w;if(r<0)return LABS[i]}return LABS[LABS.length-1]}
 function stars(n){return '★★★★★'.slice(0,n)+'☆☆☆☆☆'.slice(0,5-n)}
 
@@ -464,9 +468,9 @@ function shareURL(){
 /* ---------- state ---------- */
 var S=null, hist=[], root=null, themeText='';
 
-function newGame(theme,labId){
-  L=labOf(labId);
-  S={day:1,ap:AP_PER_DAY,chars:0,san:L.san,trust:L.trust,q:L.q,sus:0,boost:false,down:false,lab:L.lab.id,dayLog:[],theme:theme||'',queue:shuffle(EVENTS).slice(0,DAYS-1)};
+function newGame(theme,labId,sur){
+  L=labOf(labId,sur);
+  S={day:1,ap:AP_PER_DAY,chars:0,san:L.san,trust:L.trust,q:L.q,sus:0,boost:false,down:false,lab:L.lab.id,sur:L.sur,dayLog:[],theme:theme||'',queue:shuffle(EVENTS).slice(0,DAYS-1)};
   hist=[];
 }
 
@@ -534,12 +538,12 @@ function renderTitle(){
   };
 }
 
-function labCardHTML(l){
-  var o=labOf(l.id);
+function labCardHTML(l,sur){
+  var o=labOf(l.id,sur);
   return '<div class="card labcard rar-'+l.rar+' enter">'+
     '<div class="lab-head"><span class="rar">'+l.rar+'</span><span class="lab-em" aria-hidden="true">'+l.em+'</span></div>'+
-    '<h3 class="ev-title">'+esc(l.name)+'</h3>'+
-    '<p class="lab-prof">指導教員:'+esc(l.prof)+'</p>'+
+    '<h3 class="ev-title">'+esc(o.labName)+'<span class="lab-type">'+esc(l.name)+'タイプ</span></h3>'+
+    '<p class="lab-prof">指導教員:'+esc(o.sur)+'先生('+esc(l.prof.replace(/の?先生$/,''))+')</p>'+
     '<p class="ev-body">'+esc(l.desc)+'</p>'+
     '<dl class="stats" style="margin:0">'+
       '<div class="wide"><dt>先生の厳しさ</dt><dd class="star">'+stars(l.strict)+'</dd></div>'+
@@ -552,7 +556,7 @@ function labCardHTML(l){
 }
 
 function renderGacha(){
-  var rerolls=1, cur=null;
+  var rerolls=1, cur=null, sur='';
   setRoot(
     '<main class="gacha">'+
       '<span class="tag">配属前夜</span>'+
@@ -568,14 +572,14 @@ function renderGacha(){
     var cap=el('div','capsule spin');cap.innerHTML='<span>?</span>';cap.setAttribute('aria-hidden','true');
     var st=$('#gst');st.innerHTML='';st.appendChild(cap);
     blip(300,0.08,'square',0.03);
-    cur=rollLab();
+    cur=rollLab();sur=rollSur(sur);
     setTimeout(function(){
       var good=cur.rar==='SSR'||cur.rar==='SR';
       jingle(good);if(cur.rar==='SSR')buzz(120);
-      st.innerHTML=labCardHTML(cur);
+      st.innerHTML=labCardHTML(cur,sur);
       bs.innerHTML='<button class="btn primary" id="labgo" type="button">この研究室で書きはじめる</button>'+
         (rerolls>0?'<button class="btn ghost" id="reroll" type="button">引き直す(残り'+rerolls+'回)</button>':'<p class="sub">引き直しはもうできない。これが運命だ。</p>');
-      $('#labgo').onclick=function(){blip(520,0.08,'square',0.04);startGame(cur.id)};
+      $('#labgo').onclick=function(){blip(520,0.08,'square',0.04);startGame(cur.id,sur)};
       if($('#reroll'))$('#reroll').onclick=function(){rerolls--;roll()};
     },950);
   }
@@ -584,7 +588,7 @@ function renderGacha(){
 
 function buildHUD(){
   return '<header class="hud" id="hud">'+
-    '<div class="hud-top"><span class="fname"><i></i><span id="fname"></span></span><span class="labchip">'+L.lab.em+' '+esc(L.lab.name)+'</span><button class="snd" id="snd" type="button" aria-pressed="true">音 ON</button></div>'+
+    '<div class="hud-top"><span class="fname"><i></i><span id="fname"></span></span><span class="labchip">'+L.lab.em+' '+esc(L.labName)+'</span><button class="snd" id="snd" type="button" aria-pressed="true">音 ON</button></div>'+
     '<div class="hud-main"><div class="count"><small id="dlab">提出まで</small><b id="dleft">あと10日</b></div><div class="ap" id="ap" aria-label="今日の残り行動"></div></div>'+
     '<div class="chars"><b id="chars">0</b><span>/ '+fmt(GOAL)+'字</span></div>'+
     '<div class="segs" id="segs">'+new Array(21).join('<i></i>')+'</div>'+
@@ -626,8 +630,8 @@ function stage(node){
 
 function chipHTML(c){return '<span class="chip '+(c.v>0?'good':'bad')+'">'+esc(c.label)+'</span>'}
 
-function startGame(labId){
-  newGame(themeText,labId);
+function startGame(labId,sur){
+  newGame(themeText,labId,sur);
   setRoot(buildHUD());
   $('#snd').onclick=function(){
     soundOn=!soundOn;this.textContent=soundOn?'音 ON':'音 OFF';this.setAttribute('aria-pressed',String(soundOn));
@@ -828,7 +832,7 @@ function endGame(id,early){
   var rows=[];
   for(var i=0;i<hist.length;i+=5)rows.push(hist.slice(i,i+5).join(' '));
   var score=calcScore(id,early);
-  var text='【卒論ギリギリシミュレーター】\n'+E.em+' '+E.title+'(ランク'+E.rank+' / '+score+'点)\n『'+theme+'』\n配属:'+L.lab.em+L.lab.name+'('+L.lab.rar+')\n'+fmt(S.chars)+'字 / '+fmt(GOAL)+'字 ・ '+when+'\n'+rows.join('\n')+'\n'+shareURL()+'\n#卒論ギリギリシミュ #卒論';
+  var text='【卒論ギリギリシミュレーター】\n'+E.em+' '+E.title+'(ランク'+E.rank+' / '+score+'点)\n『'+theme+'』\n配属:'+L.lab.em+L.labName+'('+L.lab.name+'・'+L.lab.rar+')\n'+fmt(S.chars)+'字 / '+fmt(GOAL)+'字 ・ '+when+'\n'+rows.join('\n')+'\n'+shareURL()+'\n#卒論ギリギリシミュ #卒論';
   var enc=encodeURIComponent(text);
   setRoot(
     '<main class="result">'+
@@ -846,7 +850,7 @@ function endGame(id,early){
           '<div><dt>教授の信頼</dt><dd>'+S.trust+'</dd></div>'+
           '<div><dt>研究の質</dt><dd>'+S.q+'</dd></div>'+
           '<div><dt>疑惑</dt><dd>'+S.sus+'</dd></div>'+
-          '<div class="wide"><dt>配属</dt><dd>'+L.lab.em+' '+esc(L.lab.name)+'('+L.lab.rar+')</dd></div>'+
+          '<div class="wide"><dt>配属</dt><dd>'+L.lab.em+' '+esc(L.labName)+'('+esc(L.lab.name)+'・'+L.lab.rar+')</dd></div>'+
         '</dl>'+
         '<div class="sc-log">'+esc(rows.join('\n'))+'</div>'+
         '<div class="sc-tag">#卒論ギリギリシミュ</div>'+
@@ -967,7 +971,7 @@ function makeThesis(o){
   var C_GOOD=F(['本研究では、{how}によって{Q}を検討した。','その結果、{q2}は{claim}ことが明らかとなった。','本研究の結果は、{q2}を考える際の基礎的な資料になると考えられる。']);
   var C_MID=F(['本研究では、{Q}について{how}を行い、一定の傾向を確かめた。','今後の課題として、対象を広げた検討が挙げられる。']);
   var A_GOOD=F(['本研究では、{Q}について、{how}による検討を行った。']).concat([Rr],F(['これらの結果から、{q2}は{claim}ことが示唆された。']));
-  var ACK=o.lab&&o.lab.ack&&o.trust>=30?o.lab.ack:o.trust>=70?'本研究を進めるにあたり、終始あたたかくご指導いただいた指導教員に深く感謝する。':o.trust<30?'本研究を進めるにあたり、ご指導いただいた(はずの)指導教員に感謝する。':'本研究を進めるにあたり、ご指導いただいた指導教員に感謝する。';
+  var ACK=o.lab&&o.lab.ack&&o.trust>=30?o.lab.ack.replace('指導教員に',(o.sur||'指導教員')+(o.sur?'先生に':'に')):o.trust>=70?'本研究を進めるにあたり、終始あたたかくご指導いただいた指導教員に深く感謝する。':o.trust<30?'本研究を進めるにあたり、ご指導いただいた(はずの)指導教員に感謝する。':'本研究を進めるにあたり、ご指導いただいた指導教員に感謝する。';
 
   var d={title:tp.full,sub:'',secs:[],tail:''};
   function sec(h,p,li){d.secs.push({h:h,p:p||[],li:li||null})}
@@ -1037,7 +1041,8 @@ function makeThesis(o){
     if(dr)dr.p.push('(本節には、文体が不自然に整っている箇所がある)');
   }
   var lab=o.lab||LAB_BY_ID.normal;
-  d.meta=['〇〇大学 〇〇学部 4年 '+lab.name,'提出者:あなた / 指導教員:'+lab.prof,'ゲーム内の字数 '+fmt(o.chars)+'字 ・ '+o.title+'('+o.score+'点)'];
+  var sur=o.sur||'〇〇';
+  d.meta=['〇〇大学 〇〇学部 4年 '+sur+'研究室','提出者:あなた / 指導教員:'+sur+'先生','ゲーム内の字数 '+fmt(o.chars)+'字 ・ '+o.title+'('+o.score+'点)'];
   return d;
 }
 
@@ -1085,7 +1090,7 @@ function saveFile(name,text,say){
 
 function setupThesis(E,ctx,score,theme){
   var sec=$('#thesis');if(!sec)return;
-  var snap={lab:L.lab,theme:theme,end:E.id,title:E.title,score:score,early:ctx.early,chars:S.chars,q:S.q,trust:S.trust,san:S.san,sus:S.sus};
+  var snap={lab:L.lab,sur:L.sur,theme:theme,end:E.id,title:E.title,score:score,early:ctx.early,chars:S.chars,q:S.q,trust:S.trust,san:S.san,sus:S.sus};
   var gen=$('#gen'),paper=$('#paper'),msg=$('#thmsg'),btns=$('#paperbtns'),aiBtn=$('#ai');
   var last='',seed=(Date.now()^Math.floor(Math.random()*1e9))>>>0;
   function say(t){msg.textContent=t;msg.hidden=!t}
