@@ -23,7 +23,7 @@ const BOT=`window.__play=async function(strategy){
   const tick=()=>new Promise(r=>{q.push(r);ch.port2.postMessage(0)});
   const S=()=>window.__sotsu.state;
   const click=b=>b.dispatchEvent(new MouseEvent('click',{bubbles:true}));
-  const taps={random:[20,45],casual:[25,40],sensible:[32,42],grinder:[35,45]}[strategy];
+  const taps={random:[18,40],casual:[22,36],sensible:[28,40],grinder:[30,42]}[strategy];
   const t0=Date.now();
   while(Date.now()-t0<20000){
     await tick();
@@ -38,7 +38,10 @@ const BOT=`window.__play=async function(strategy){
     if(tap){if(!tap.disabled&&!tap.dataset.done){tap.dataset.done=1;const n=rnd(...taps);for(let k=0;k<n;k++)tap.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,cancelable:true}))}continue}
     if(c.querySelector('.res-text')){click(c.querySelector('.btn.primary'));continue}
     if(c.querySelector('.ev-title')&&!c.querySelector('.res-text')){
-      const bs=[...c.querySelectorAll('.stack .btn')].filter(b=>!b.disabled);if(bs.length)click(pick(bs));continue}
+      const bs=[...c.querySelectorAll('.stack .btn')].filter(b=>!b.disabled);
+      if(/バックアップ/.test(c.textContent)&&bs.length){ // 夜の保存:慎重な戦略ほど保存する
+        const save={random:0.5,casual:0.6,sensible:1,grinder:0.3}[strategy];click(R()<save?bs[0]:bs[1]);continue}
+      if(bs.length)click(pick(bs));continue}
     const acts=c.querySelectorAll('.actions .btn');
     if(acts.length){
       const s=S(), sub=c.querySelector('.btn.marker');

@@ -187,6 +187,17 @@ details.box textarea{width:100%;height:150px;margin-top:8px;font:inherit;font-si
 .paper .th-meta{text-align:center;font-size:12.5px;color:var(--muted);line-height:1.7;margin:6px 0 12px}
 .paper h5{font-size:16px;margin-top:10px}
 .paper .th-tail{color:var(--muted);text-align:center;margin-top:16px}
+.paper .th-red{font-family:var(--f-body);color:var(--pen);font-weight:900;font-size:13.5px;transform:rotate(-1.5deg);margin:-2px 0 8px 1.2em}
+.paper .th-red::before{content:"✎ "}
+.paper .th-tab{margin:6px 0 10px;overflow-x:auto}
+.paper .th-tab table{border-collapse:collapse;font-size:13px;width:100%}
+.paper .th-tab th,.paper .th-tab td{border-top:1px solid var(--ink);border-bottom:1px solid var(--ink);padding:2px 6px;text-align:left}
+.paper figcaption{font-size:12.5px;font-weight:700;margin-bottom:2px}
+.paper .th-fig{margin:6px 0 10px}
+.paper .th-chart{display:flex;align-items:flex-end;gap:10%;height:64px;border-left:1.5px solid var(--ink);border-bottom:1.5px solid var(--ink);padding:0 8%}
+.paper .th-chart i{flex:1;background:var(--muted)}
+.paper .th-chart i:last-child{background:var(--pen)}
+.paper .th-refs{list-style:none;padding-left:0;font-size:13.5px}
 .note{font-size:12.5px;color:var(--muted);line-height:1.5}
 .th-msg{font-size:13px;font-weight:700;color:var(--pen)}
 
@@ -200,6 +211,21 @@ details.box textarea{width:100%;height:150px;margin-top:8px;font:inherit;font-si
 .paper .th-letter p{margin:0}
 .th-letter .to{font-weight:700}
 .th-letter .sig{text-align:right;margin-top:4px}
+
+.m{border:0;background:transparent;padding:0;text-align:left;font:inherit;font-size:11.5px;font-weight:900;color:inherit}
+.unsaved{margin-left:auto;border:2px solid var(--ink);background:var(--card);border-radius:6px;font-size:11px;font-weight:900;padding:1px 7px;color:var(--ink)}
+.unsaved.warn{background:var(--pen);border-color:var(--pen);color:#fff}
+.helptip{font-size:12.5px;font-weight:700;line-height:1.55;background:var(--marker);border:2px solid var(--ink);border-radius:8px;padding:8px 10px;cursor:pointer}
+.card.incident{border-color:var(--pen);box-shadow:5px 5px 0 var(--pen)}
+
+.tform{border:0;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.trow{display:flex;align-items:center;gap:8px}
+.trow .inp{flex:1;min-width:0}
+.trow span{font-family:var(--f-doc);font-weight:700;font-size:16px;flex:none;width:5.2em}
+.tdice{width:auto;flex:none;padding:10px 14px;font-size:20px}
+.tprev{font-family:var(--f-doc);font-weight:700;font-size:15px;word-break:break-all}
+
+.toast{position:fixed;left:12px;right:12px;bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:70;background:var(--ink);color:var(--paper);border-radius:10px;padding:10px 12px;font-size:13px;font-weight:700;line-height:1.5;box-shadow:4px 4px 0 var(--pen)}
 
 /* lab gacha */
 .gacha{padding-top:20px;display:flex;flex-direction:column;gap:14px}
@@ -324,49 +350,96 @@ var FRAGS=['本研究では','以上のことから','有意な差は認めら�
 var CRAZY=['もうだめ','睡眠とは何か','カレーうどん','提出日は存在しない','あと一行','おなかすいた','だれか','Ctrl+S','ねむい','ここはどこ','猫','留年','教授ごめんなさい','単位とは','あああああ'];
 
 var ACTIONS=[
-  {id:'write',em:'✍️',nm:'書く',ht:'5秒間の連打で字数を稼ぐ。正気度が減る'},
-  {id:'read',em:'📚',nm:'文献を読む',ht:'研究の質が上がる。少し書ける'},
-  {id:'exp',em:'🧪',nm:'実験・解析',ht:'質が大きく上がる。失敗もある'},
-  {id:'ask',em:'🙇',nm:'教授に相談',ht:'信頼が上がる。厳しい一言も'},
-  {id:'sleep',em:'🛌',nm:'寝る',ht:'正気度が大きく回復する',wide:true}
+  {id:'write',em:'✍️',nm:'書く',ht:'連打で字数を稼ぐ。研究の質が高いほど速い'},
+  {id:'read',em:'📚',nm:'文献を読む',ht:'研究の質が上がる。当たり外れあり'},
+  {id:'exp',em:'🧪',nm:'実験・解析',ht:'成功すれば質が大きく上がる。質が高いほど成功しやすい'},
+  {id:'ask',em:'🙇',nm:'教授に相談',ht:'信頼が上がる。手ぶらで行くと逆効果'},
+  {id:'sleep',em:'🛌',nm:'寝る',ht:'正気度が回復する。寝坊することも',wide:true}
 ];
 
+/* 行動の結果。どれもランダムで、ほかのパラメーターの影響を受ける */
 var ACT_RUN={
   read:function(){
+    var r=Math.random();
+    if(r<0.18)return {t:pick(['参考文献の参考文献で、神論文を見つけた。全部ここに書いてあった。','読んだ論文の図が、まさに自分の言いたいことだった。']),fx:{q:rand(16,22),t:3,c:rand(150,250),s:-3}};
+    if(r<0.35){mark('lostread');return {t:pick(['3時間読んだ。1行も理解できなかった。','PDFを開いたまま寝ていた。よだれの跡が残った。','英語の論文だと思ったら、ドイツ語だった。']),fx:{q:2,s:-7}}}
     return {t:pick(['英語の論文を3本読んだ。2本目から記憶がない。','Introductionだけで30分かかった。でも要点は掴んだ。','孫引きをたどって、やっと原典に着いた。','Discussionに自分と同じ悩みが書いてあった。少し救われた。']),
-      fx:{q:rand(10,15),c:rand(120,220),s:-4}};
+      fx:{q:rand(8,13),c:rand(80,160),s:-4}};
   },
   exp:function(){
-    if(chance(0.62)){
+    var p=0.42+S.q/250;
+    if(chance(0.07)){mark('breakthrough');return {t:'予想と真逆の結果が出た。……これ、もしかして大発見では?',fx:{q:rand(24,30),t:8,c:rand(400,600),s:-6}}}
+    if(chance(p)){
       return {t:pick(['データがきれいに揃った。グラフにした瞬間、報われた。','再現性あり。今日だけは自分を褒めていい。','エラーが消えて、図が出た。思わず声が出た。']),
-        fx:{q:rand(16,22),c:rand(250,400),s:-6}};
+        fx:{q:rand(14,20),c:rand(200,350),s:-6}};
     }
+    mark('fail');
     return {t:pick(['結果が毎回違う。これを再現性とは呼べない。','あと一歩でエラー。原因は半角スペースだった。','対照区のほうが元気だった。','条件をひとつ変え忘れていた。']),
-      fx:{q:4,s:-10}};
+      fx:{q:3,s:-11}};
   },
   ask:function(){
     if(chance(L.absent)){
-      return {t:pick(['教授室は空だった。ドアに「出張中」の札。','メールしたら「来週戻ります」とだけ返ってきた。']),fx:{s:-2}};
+      return {t:pick(['教授室は空だった。ドアに「出張中」の札。','メールしたら「来週戻ります」とだけ返ってきた。']),fx:{s:-3}};
     }
-    if(chance(L.ask)){
-      return {t:pick(['「方向性いいと思うよ」と言われた。胃がゆるんだ。','「この図、わかりやすいね」だけで3日は戦える。']),fx:{t:rand(10,14),q:4,s:-2}};
+    if(S.q<25){
+      return {t:pick(['「で、データは?」と聞かれて、何も出せなかった。','「何がしたいのか、まだ見えないね」。正論が刺さる。']),fx:{t:-6,q:5,s:-7}};
     }
-    return {t:pick(['「で、結論は?」の一言で背筋が伸びた。','「構成を見直したほうがいい」。的確すぎて反論できない。']),fx:{t:3,q:Math.round(8*L.askQ),s:-10}};
+    if(chance(L.ask+(S.q-40)/250)){
+      return {t:pick(['「方向性いいと思うよ」と言われた。胃がゆるんだ。','「この図、わかりやすいね」だけで3日は戦える。','「このまま進めて」。短いけど、最高の一言だった。']),fx:{t:rand(9,13),q:4,s:-2}};
+    }
+    return {t:pick(['「で、結論は?」の一言で背筋が伸びた。','「構成を見直したほうがいい」。的確すぎて反論できない。']),fx:{t:2,q:Math.round(8*L.askQ),s:-9}};
   },
   sleep:function(){
-    return {t:pick(['9時間寝た。脳が静かに回復している。','布団が優しい。卒論の存在を一瞬忘れた。','夢の中でも参考文献を整えていた。']),fx:{s:rand(24,30)}};
+    var r=Math.random();
+    if(r<0.14&&S.ap>1){mark('oversleep');return {t:'目覚ましを止めた記憶がない。起きたら夕方だった。',fx:{s:rand(34,40),ap:-1}}}
+    if(r<0.26){mark('dream');return {t:'夢の中で考察が完成した。起きてすぐメモした。半分は読めない。',fx:{s:rand(18,24),c:rand(200,350),q:2}}}
+    return {t:pick(['9時間寝た。脳が静かに回復している。','布団が優しい。卒論の存在を一瞬忘れた。','夢の中でも参考文献を整えていた。']),fx:{s:rand(22,28)}};
   }
 };
+
+/* 行動のあとに、たまに起きるハプニング(1日1回まで)。未保存の原稿は消えることがある */
+var INCIDENTS=[
+  {w:3,em:'💻',title:'PCが突然フリーズした',run:function(){
+    var u=S.chars-S.saved;if(u<=0)return {t:'再起動した。保存してあったので、何も失わなかった。',fx:{s:-2}};
+    var lose=Math.round(u*(0.6+Math.random()*0.4));mark('lost');
+    return {t:'再起動したら、最後に保存した時点に戻っていた。'+fmt(lose)+'字が消えた。',fx:{c:-lose,s:-12}};
+  }},
+  {w:1,em:'🔌',title:'足がケーブルに引っかかった',run:function(){
+    var u=S.chars-S.saved;if(u<=0)return {t:'電源が抜けた。でも保存してあった。昨日の自分、えらい。',fx:{}};
+    mark('lost');return {t:'電源が抜けて、画面が真っ暗になった。保存していない分は、全部消えた。',fx:{c:-u,s:-15}};
+  }},
+  {w:2,em:'☕',title:'コーヒーをキーボードにこぼした',run:function(){mark('coffee');return {t:'キーボードの「の」が反応しなくなった。正気度が少し削れた。',fx:{s:-8}}}},
+  {w:2,em:'💡',title:'シャワー中にひらめいた',run:function(){return {t:'考察の続きが、急に全部見えた。忘れないうちに書いた。',fx:{c:rand(250,450),q:3}}}},
+  {w:2,em:'🍙',title:'先輩が差し入れをくれた',run:function(){return {t:'おにぎりと、「大丈夫、みんな通った道だから」の一言。',fx:{s:12}}}},
+  {w:2,em:'🚪',title:'教授が抜き打ちで覗きに来た',run:function(){
+    if(S.q>=40)return {t:'画面を見て「お、進んでるね」と言って去っていった。',fx:{t:8}};
+    return {t:'画面を見て、何も言わずに去っていった。それが一番こわい。',fx:{t:-8,s:-5}};
+  }},
+  {w:1,em:'☁️',title:'自動バックアップが動いていた',run:function(){return {t:'知らないうちにクラウドに全部保存されていた。テクノロジーに感謝。',fx:{save:1}}}},
+  {w:1,em:'🐈',title:'猫が膝に乗ってきた',run:function(){mark('cat');return {t:'猫が動くまで、何もできない。それでいい。',fx:{s:8,c:60}}}}
+];
+function rollIncident(){
+  if(!S||S.incToday||S.chars<=0&&chance(0.5))return null;
+  if(!chance(0.16+(S.san<30?0.1:0)))return null;
+  S.incToday=true;
+  var tot=0;INCIDENTS.forEach(function(x){tot+=x.w});
+  var r=Math.random()*tot;
+  for(var i=0;i<INCIDENTS.length;i++){r-=INCIDENTS[i].w;if(r<0)return INCIDENTS[i]}
+  return INCIDENTS[0];
+}
 
 var EVENTS=[
   {id:'word',em:'💾',tag:'トラブル',title:'Wordが突然フリーズした',body:'「応答なし」の文字。最後に保存したのはいつだったか。',choices:[
     {label:'自動回復に祈る',run:function(){
-      if(chance(0.55))return {t:'回復ペインに全文が残っていた。神に感謝した。',fx:{}};
-      var lose=Math.round(Math.min(S.chars*0.25,2200));
-      mark('lost');return {t:'直前の分が消えていた。祈りは届かなかった。',fx:{c:-lose,s:-10}};
+      if(chance(0.45))return {t:'回復ペインに全文が残っていた。神に感謝した。',fx:{save:1}};
+      var u=S.chars-S.saved;mark('lost');
+      if(u<=0)return {t:'祈りは届かなかった。でも保存してあったので無事だった。',fx:{s:-4}};
+      return {t:'祈りは届かなかった。最後の保存から先、'+fmt(u)+'字が消えた。',fx:{c:-u,s:-14}};
     }},
-    {label:'再起動して昨日の版から復元',run:function(){
-      return {t:'昨日の版には戻せた。今日の分は…なかったことにする。',fx:{c:-Math.round(Math.min(S.chars*0.08,600)),s:-3}};
+    {label:'最後に保存した版から復元',run:function(){
+      var u=S.chars-S.saved;
+      if(u<=0)return {t:'保存した版に戻した。何も失わなかった。',fx:{s:-2}};
+      return {t:'保存した版には戻せた。そのあと書いた'+fmt(u)+'字は、なかったことにする。',fx:{c:-Math.round(u*0.8),s:-4}};
     }}]},
   {id:'nomi',em:'🍻',tag:'誘惑',title:'同期から飲みの誘い',body:'「息抜きしようぜ」の一言が、悪魔の囁きに聞こえる。',choices:[
     {label:'行く',run:function(){return {t:'笑った。卒論の話は一回も出なかった。最高だった。',fx:{s:24,ap:-1}}}},
@@ -524,7 +597,18 @@ function shareURL(){
 }
 
 /* ---------- state ---------- */
-var S=null, hist=[], root=null, themeText='';
+var S_TITLE=null;
+var S=null, hist=[], root=null, themeText='', TP={a:'',b:'',c:'おまかせ'};
+/* タイトルは「〇〇における△△の□□」にそろえる。□□は選ぶか、おまかせ */
+var TITLE_TAILS=['解析','検討','評価','比較','一考察','実証的研究','定量的評価','基礎的研究'];
+var EX_A=['大学生','地方都市','研究室','深夜のコンビニ','学食','オンライン授業','ゼミ','通学電車','一人暮らし','大学図書館'];
+var EX_B=['睡眠時間','SNS利用','締切前行動','カフェイン摂取','集中力','先延ばし','会話量','やる気','財布の残高','朝の気分'];
+function makeTitle(p){
+  var a=(p.a||'').trim(),b=(p.b||'').trim(),c=p.c&&p.c!=='おまかせ'?p.c:pick(TITLE_TAILS);
+  if(!a&&!b)return {a:'',b:'',c:c,full:''};
+  if(!b)b=pick(EX_B);
+  return {a:a,b:b,c:c,full:(a?a+'における':'')+b+'の'+c};
+}
 
 /* プレイ中の事件の痕跡。模擬卒論にそのまま残る */
 function mark(k){if(S){S.marks[k]=(S.marks[k]||0)+1}}
@@ -536,7 +620,8 @@ function chaosLevel(){
 
 function newGame(theme,labId,sur){
   L=labOf(labId,sur);
-  S={day:1,ap:AP_PER_DAY,chars:0,san:L.san,trust:L.trust,q:L.q,sus:0,boost:false,down:false,lab:L.lab.id,sur:L.sur,marks:{},scraps:[],crazyN:0,dayLog:[],theme:theme||'',queue:shuffle(EVENTS).slice(0,DAYS-1)};
+  if(!S_TITLE||S_TITLE.full!==theme)S_TITLE={full:theme||''};
+  S={day:1,ap:AP_PER_DAY,chars:0,san:L.san,trust:L.trust,q:L.q,sus:0,boost:false,down:false,lab:L.lab.id,sur:L.sur,marks:{},scraps:[],crazyN:0,saved:0,incToday:false,cut:0,minSan:100,writes:0,sleeps:0,coffee:0,backups:0,dayLog:[],theme:theme||'',queue:shuffle(EVENTS).slice(0,DAYS-1)};
   hist=[];
 }
 
@@ -559,6 +644,9 @@ function apply(fx,em){
     if(d)chips.push({v:d,label:(d>0?'+':'−')+fmt(Math.abs(d))+'字'});
   }
   stat('s','正気度','san');stat('t','教授の信頼','trust');stat('q','研究の質','q');
+  S.saved=Math.min(S.saved,S.chars);
+  if(fx.save){S.saved=S.chars;chips.push({v:1,label:'保存済み'})}
+  S.minSan=Math.min(S.minSan,S.san);
   if(fx.sus){S.sus+=fx.sus;chips.push({v:-1,label:'疑惑 +'+fx.sus})}
   if(fx.ap){
     var a=S.ap;S.ap=Math.max(0,S.ap+fx.ap);
@@ -590,15 +678,30 @@ function renderTitle(){
       '<div class="filetab"><i></i><span>卒論_最終_本当に最終.docx - 保存されていません</span></div>'+
       '<div class="hero"><h1><span class="t1">卒論</span><span class="t2">ギリギリ</span><span class="t3">シミュレーター</span></h1><div class="maru" aria-hidden="true">〆</div></div>'+
       '<div class="deadline"><span>提出まで</span><b>あと10日</b></div>'+
-      '<div class="how"><div><b>10日で1万字。</b>1日2回動ける。</div><div>書く・調べる・相談する・寝る。バランスを崩したら終わり。</div><div>毎日1回、事件が起きる。</div></div>'+
-      '<div><label class="lbl" for="theme">卒論のテーマ(結果のシェアカードに載ります)</label><input class="inp" id="theme" type="text" maxlength="30" autocomplete="off" placeholder="例:◯◯における△△の影響に関する研究" value="'+esc(themeText)+'"></div>'+
+      '<div class="how"><div><b>10日で1万字。</b>1日2回動ける。</div><div>研究の質が高いほど速く書ける。教授は4日目と8日目に赤ペンを入れてくる。</div><div>事件とハプニングは突然に。寝る前の保存を忘れずに。</div></div>'+
+      '<fieldset class="tform"><legend class="lbl">卒論のタイトル(結果と模擬卒論に載ります)</legend>'+
+        '<div class="trow"><input class="inp" id="ta" type="text" maxlength="14" autocomplete="off" aria-label="対象(〇〇)" placeholder="'+esc(pick(EX_A))+'" value="'+esc(TP.a)+'"><span>における</span></div>'+
+        '<div class="trow"><input class="inp" id="tb" type="text" maxlength="14" autocomplete="off" aria-label="テーマ(△△)" placeholder="'+esc(pick(EX_B))+'" value="'+esc(TP.b)+'"><span>の</span></div>'+
+        '<div class="trow"><select class="inp" id="tc" aria-label="締めの言葉">'+['おまかせ'].concat(TITLE_TAILS).map(function(x){return '<option'+(x===TP.c?' selected':'')+'>'+x+'</option>'}).join('')+'</select><button class="btn ghost tdice" id="tdice" type="button" aria-label="例で埋める">🎲</button></div>'+
+        '<p class="tprev" id="tprev"></p>'+
+      '</fieldset>'+
       '<button class="btn primary" id="start" type="button">書きはじめる</button>'+
       '<p class="coll-note">エンディング '+got.length+'/'+ENDINGS.length+' を回収済み</p>'+
       '<details class="box" id="colld"><summary>図鑑を見る</summary><div style="margin-top:10px">'+collectionHTML()+'</div></details>'+
     '</main>'
   );
+  function prev(){
+    TP={a:$('#ta').value,b:$('#tb').value,c:$('#tc').value};
+    var a=TP.a.trim()||$('#ta').placeholder,b=TP.b.trim()||$('#tb').placeholder;
+    $('#tprev').textContent='『'+a+'における'+b+'の'+(TP.c==='おまかせ'?'(おまかせ)':TP.c)+'』';
+  }
+  ['ta','tb','tc'].forEach(function(id){$('#'+id).addEventListener('input',prev)});
+  $('#tdice').onclick=function(){$('#ta').value=pick(EX_A);$('#tb').value=pick(EX_B);prev()};
+  prev();
   $('#start').onclick=function(){
-    themeText=$('#theme').value.trim();
+    prev();
+    var t=makeTitle({a:TP.a.trim()||$('#ta').placeholder,b:TP.b.trim()||$('#tb').placeholder,c:TP.c});
+    S_TITLE=t;themeText=t.full;
     blip(520,0.08,'square',0.04);
     renderGacha();
   };
@@ -662,13 +765,13 @@ function buildHUD(){
   return '<header class="hud" id="hud">'+
     '<div class="hud-top"><span class="fname"><i></i><span id="fname"></span></span><span class="labchip">'+L.lab.em+' '+esc(L.labName)+'</span><button class="snd" id="snd" type="button" aria-pressed="true">音 ON</button></div>'+
     '<div class="hud-main"><div class="count"><small id="dlab">提出まで</small><b id="dleft">あと10日</b></div><div class="ap" id="ap" aria-label="今日の残り行動"></div></div>'+
-    '<div class="chars"><b id="chars">0</b><span>/ '+fmt(GOAL)+'字</span></div>'+
+    '<div class="chars"><b id="chars">0</b><span>/ '+fmt(GOAL)+'字</span><button class="unsaved" id="unsaved" type="button" data-help="unsaved"></button></div>'+
     '<div class="segs" id="segs">'+new Array(21).join('<i></i>')+'</div>'+
     '<div class="meters">'+
-      '<div class="m" id="m-san"><span>正気度</span><b>70</b><em><i></i></em></div>'+
-      '<div class="m" id="m-trust"><span>教授の信頼</span><b>40</b><em><i></i></em></div>'+
-      '<div class="m" id="m-q"><span>研究の質</span><b>10</b><em><i></i></em></div>'+
-    '</div></header><div id="stage"></div>';
+      '<button class="m" id="m-san" type="button" data-help="san"><span>正気度 ⓘ</span><b>70</b><em><i></i></em></button>'+
+      '<button class="m" id="m-trust" type="button" data-help="trust"><span>教授の信頼 ⓘ</span><b>40</b><em><i></i></em></button>'+
+      '<button class="m" id="m-q" type="button" data-help="q"><span>研究の質 ⓘ</span><b>10</b><em><i></i></em></button>'+
+    '</div><div class="helptip" id="helptip" hidden></div></header><div id="stage"></div>';
 }
 
 function countTo(node,to){
@@ -691,6 +794,8 @@ function updateHUD(){
   $('#dlab').textContent=S.day>=DAYS?'最終日':'提出まで';
   $('#fname').textContent=FNAMES[Math.min(S.day-1,FNAMES.length-1)];
   countTo($('#chars'),S.chars);
+  var u=S.chars-S.saved,ub=$('#unsaved');
+  ub.textContent=u>0?'💾 未保存 '+fmt(u)+'字':'💾 すべて保存済み';ub.classList.toggle('warn',u>=1500);
   var n=Math.min(20,Math.floor(S.chars/(GOAL/20)));
   var segs=document.querySelectorAll('#segs i');
   for(var i=0;i<segs.length;i++)segs[i].className=i<n?'on':'';
@@ -715,10 +820,29 @@ function stage(node){
 
 function chipHTML(c,i){return '<span class="chip '+(c.v>0?'good':'bad')+'" style="animation-delay:'+((i||0)*90+120)+'ms">'+esc(c.label)+'</span>'}
 
+var HELP={
+  san:'正気度:0になると倒れる(2回目で終わり)。30を切ると書くのが遅くなり、ハプニングも起きやすくなる。寝ると回復。',
+  trust:'教授の信頼:相談すると上がるが、研究の質が低いまま行くと下がる。高いと4日目・8日目の赤ペン添削で削られる量が減る。優秀賞や温情に必要。',
+  q:'研究の質:文献・実験・相談で上がる。高いほど書く速度が上がり(書くことがある)、実験も成功しやすい。卒業に必要。低いと赤ペン添削で大きく削られる。',
+  unsaved:'未保存の字数:最後のバックアップより後に書いた分。PCのフリーズなどで消えることがある。夜、寝る前にバックアップできる。'
+};
+function wireHelp(){
+  var tip=$('#helptip');
+  document.querySelectorAll('#hud [data-help]').forEach(function(b){
+    b.onclick=function(){
+      var k=b.getAttribute('data-help');
+      if(!tip.hidden&&tip.dataset.k===k){tip.hidden=true;return}
+      tip.dataset.k=k;tip.textContent=HELP[k];tip.hidden=false;
+    };
+  });
+  tip.onclick=function(){tip.hidden=true};
+}
+
 function startGame(labId,sur){
   newGame(themeText,labId,sur);
   scenePreloadForGame();
   setRoot(buildHUD());
+  wireHelp();
   $('#snd').onclick=function(){
     soundOn=!soundOn;this.textContent=soundOn?'音 ON':'音 OFF';this.setAttribute('aria-pressed',String(soundOn));
   };
@@ -737,8 +861,12 @@ function dayCut(){
 
 function beginDay(){
   dayCut();
-  S.ap=AP_PER_DAY;S.dayLog=[];
+  S.ap=AP_PER_DAY;S.dayLog=[];S.incToday=false;
   updateHUD();
+  if((S.day===4||S.day===8)&&!S['rev'+S.day]){S['rev'+S.day]=1;return showReview(beginDayEvent)}
+  beginDayEvent();
+}
+function beginDayEvent(){
   var ev=S.day>=DAYS?FINAL_EV:S.queue[S.day-1];
   var sc=eventScene(ev);
   if(sc){var st=$('#stage');if(st)st.innerHTML='';cine(sc).then(function(){showEvent(ev)})}
@@ -793,6 +921,22 @@ function showResult(text,chips){
   var info=nextInfo();
   var card=el('div','card');
   card.innerHTML='<p class="res-text">'+esc(text)+'</p>'+(chips.length?'<div class="chips">'+chips.map(chipHTML).join('')+'</div>':'');
+  var b=el('button','btn primary');b.type='button';b.textContent=info.label;
+  b.onclick=function(){
+    var inc=S.san>0?rollIncident():null;
+    if(inc)showIncident(inc);else nextInfo().go();
+  };
+  card.appendChild(b);
+  stage(card);
+}
+
+function showIncident(inc){
+  var r=inc.run();
+  var chips=apply(r.fx||{},inc.em);
+  buzz(80);blip(r.fx&&(r.fx.c<0||r.fx.s<0||r.fx.t<0)?160:700,0.15,'square',0.05);
+  var card=el('div','card incident');
+  card.innerHTML='<span class="tag">ハプニング</span><h2 class="ev-title">'+inc.em+' '+esc(inc.title)+'</h2><p class="res-text">'+esc(r.t)+'</p>'+(chips.length?'<div class="chips">'+chips.map(chipHTML).join('')+'</div>':'');
+  var info=nextInfo();
   var b=el('button','btn primary');b.type='button';b.textContent=info.label;b.onclick=info.go;
   card.appendChild(b);
   stage(card);
@@ -826,6 +970,7 @@ function spend(em){S.ap=Math.max(0,S.ap-1);S.dayLog.push(em)}
 
 function doAction(a){
   if(a.id==='write')return doWrite();
+  if(a.id==='sleep')S.sleeps++;
   var r=ACT_RUN[a.id]();
   spend(a.em);
   var chips=apply(r.fx,a.em);
@@ -834,9 +979,11 @@ function doAction(a){
 }
 
 function doWrite(){
-  var boost=S.boost, crazy=S.san<30, DUR=5000;
+  var boost=S.boost, crazy=S.san<30, DUR=5000, taps=0;
+  // 1タップの字数:研究の質が高いほど速い(書くことがある)。正気度が低いと遅い。30タップを超えると手が疲れて半分
+  var mult=(0.7+S.q/100)*(crazy?0.75:1)*L.wm*(boost?1.5:1);
   var card=el('div','card frenzy');
-  card.innerHTML='<span class="tag">書く ・ '+(boost?'エナドリ全開 ×1.5':'5秒')+'</span>'+
+  card.innerHTML='<span class="tag">書く ・ 5秒 ・ 速さ ×'+mult.toFixed(2)+(boost?'(エナドリ)':'')+'</span>'+
     '<div class="timer"><i id="tbar"></i></div>'+
     '<div class="doc" id="doc"></div>'+
     '<button class="tapbtn" id="tap" type="button" aria-label="連打して書く">タップで書き始める</button>'+
@@ -848,7 +995,8 @@ function doWrite(){
   function tap(x,y){
     if(over)return;
     if(!started){started=true;t0=performance.now();btn.textContent='叩け!!';loop()}
-    var n=Math.round(rand(28,50)*(boost?1.5:1)*L.wm);
+    taps++;
+    var n=Math.max(1,Math.round(rand(21,29)*mult*(taps>32?0.45:1)));
     total+=n;
     var cz=crazy&&chance(0.55);
     var f=cz?pick(CRAZY):pick(FRAGS);
@@ -879,10 +1027,12 @@ function doWrite(){
       S.boost=false;
       var fx={c:total,s:total===0?-2:-(8+(boost?6:0)+L.wc)};
       var t=total===0?'画面を見つめて終わった。0字。':
-        total<700?'指が重い。1行ずつ絞り出した。':
-        total<1300?'まずまずのペース。段落がひとつ増えた。':
-        total<2000?'ゾーンに入った。時間が溶けた。':
+        total<350?'指が重い。1行ずつ絞り出した。':
+        total<650?'まずまずのペース。段落がひとつ増えた。':
+        total<950?'ゾーンに入った。時間が溶けた。':
         '神が降りてきた。指が勝手に動いた。';
+      if(total>0&&chance(0.12)){fx.c=Math.round(total*1.3);fx.q=-5;mark('drift');t+=' ……勢いで書いたら、途中から何の話かわからなくなった。'}
+      S.writes++;
       if(boost)t+=' エナドリが切れて、どっと疲れた。';
       spend('✍️');
       var chips=apply(fx,'✍️');
@@ -899,9 +1049,52 @@ function doWrite(){
 function endDay(){
   hist.push(S.dayLog.join('')||'💤');
   if(S.day>=DAYS)return finish(false);
+  var u=S.chars-S.saved;
+  if(u>0)return showBackup(u);
+  nightEnd();
+}
+function nightEnd(){
   if(L.night)S.san=clamp(S.san+L.night,1,100);
   S.day++;
   beginDay();
+}
+/* 寝る前のバックアップ:少し正気度を使うが、未保存の原稿を守れる */
+function showBackup(u){
+  var card=el('div','card');
+  card.innerHTML='<span class="tag">夜 ・ DAY '+S.day+'</span><h2 class="ev-title">💾 寝る前に、バックアップする?</h2><p class="ev-body">未保存の原稿が <b>'+fmt(u)+'字</b> ある。USBとクラウドに保存するには、もうひと頑張り必要だ。</p>';
+  var box=el('div','stack');
+  [['保存してから寝る(正気度 −4)',function(){S.backups++;return {t:'保存した。これで明日、何が起きても大丈夫……のはず。',fx:{save:1,s:-4}}}],
+   ['眠いのでそのまま寝る',function(){mark('nosave');return {t:'明日の自分が、きっとなんとかしてくれる。',fx:{}}}]].forEach(function(c){
+    var b=el('button','btn');b.type='button';b.textContent=c[0];
+    b.onclick=function(){
+      Array.prototype.forEach.call(box.children,function(x){x.disabled=true});
+      var r=c[1](),chips=apply(r.fx,'💾');
+      var res=el('div','card');
+      res.innerHTML='<p class="res-text">'+esc(r.t)+'</p>'+(chips.length?'<div class="chips">'+chips.map(chipHTML).join('')+'</div>':'');
+      var nb=el('button','btn primary');nb.type='button';nb.textContent='朝になる';nb.onclick=nightEnd;
+      res.appendChild(nb);stage(res);
+    };
+    box.appendChild(b);
+  });
+  card.appendChild(box);stage(card);
+}
+/* 4日目・8日目の朝:教授の赤ペン添削。質が低い水増しは削られる。信頼が高いと手加減してもらえる */
+function showReview(next){
+  var rate=S.q<30?0.16:S.q<50?0.09:S.q<70?0.04:0;
+  if(S.trust>=60)rate*=0.5;
+  if(L.lab.id==='oni')rate+=0.05;
+  if(L.lab.id==='hotoke')rate*=0.5;
+  var cut=Math.round(S.chars*rate);
+  var who=L.sur+'先生';
+  var t=S.chars<300?who+'「まだ何もないじゃない。……まあ、これからだね」':
+    cut>0?who+'「この段落、何が言いたいの?」原稿が赤く染まり、'+fmt(cut)+'字が削られた。':
+    who+'「うん、この調子で」。赤ペンはほとんど入らなかった。';
+  if(cut>0){S.cut+=cut;mark('redpen')}
+  var chips=apply(cut>0?{c:-cut,t:S.q>=50?3:-3}:{t:4},'🖍️');
+  var card=el('div','card');
+  card.innerHTML='<span class="tag">DAY '+S.day+' ・ 赤ペン添削</span><h2 class="ev-title">🖍️ 教授から原稿が返ってきた</h2><p class="res-text">'+esc(t)+'</p>'+(chips.length?'<div class="chips">'+chips.map(chipHTML).join('')+'</div>':'')+'<p class="ev-body" style="font-size:13px">研究の質が低いほど、水増しは削られる。信頼が高いと手加減してもらえる。</p>';
+  var b=el('button','btn primary');b.type='button';b.textContent='今日をはじめる';b.onclick=next;
+  card.appendChild(b);stage(card);
 }
 
 function judge(early){
@@ -920,7 +1113,16 @@ function judge(early){
    cine.js(Three.js)を遅延読み込みして再生する。読めない環境では何もせずに先へ進む */
 function cine(spec){
   if(window.__noCine)return Promise.resolve();
-  return import('./cine.js').then(function(m){return m.play(spec)}).catch(function(){});
+  return import('./cine.js').then(function(m){return m.play(spec)}).then(function(r){
+    if(r&&r.why)toast('3Dムービーを表示できませんでした:'+r.why);
+  }).catch(function(e){
+    toast('3Dムービーを表示できませんでした:3D部品の読み込みに失敗('+String(e&&e.message||e).slice(0,80)+')');
+  });
+}
+/* 画面下に数秒だけ出るお知らせ */
+function toast(t){
+  var d=el('div','toast');d.setAttribute('role','status');d.textContent=t;document.body.appendChild(d);
+  setTimeout(function(){if(d.parentNode)d.parentNode.removeChild(d)},6000);
 }
 function cinePreload(names){
   if(window.__noCine)return;
@@ -1103,33 +1305,28 @@ var STYLE_BY_END={
    模擬卒論を組み立てる。内容と数値はすべて架空。実在の論文・人物は出さない。 */
 function mulberry(seed){var a=seed>>>0;return function(){a=(a+0x6D2B79F5)|0;var t=Math.imul(a^(a>>>15),1|a);t=(t+Math.imul(t^(t>>>7),61|t))^t;return ((t^(t>>>14))>>>0)/4294967296}}
 
-function parseTheme(theme){
+/* タイトル「〇〇における△△の□□」の部品を取り出す */
+function parseTheme(theme, tp){
+  tp=tp||{};
   var full=String(theme||'').trim();
   var has=!!full&&full!=='無題の卒論';
-  var core=full.replace(/[\s　]*(に関する|についての|をめぐる|に向けた|の)?(基礎的な?|実証的な?)?(研究|一考察|考察|検討|分析|調査)$/,'')||full;
-  var kind=/実験|細胞|植物|藻|菌|遺伝|酵素|タンパク|化学|材料|合成|測定|光合成|培養|物性|反応|生育|土壌|水質|葉緑体/.test(full)?'exp':
-    /意識|学生|若者|調査|消費|SNS|行動|満足|働き方|地域|観光|教育|購買|心理|コミュニケーション|アンケート/.test(full)?'survey':
-    /文学|歴史|作品|思想|小説|史料|文化|言説|表象|宗教|哲学|映画|漫画|アニメ|和歌|俳句/.test(full)?'lit':'data';
-  return {full:has?full:'無題の卒論',has:has,core:core,Q:has?'「'+core+'」':'本テーマ',kind:kind};
+  var a=(tp.a||'').trim(), b=(tp.b||'').trim(), c=(tp.c||'').trim();
+  if(has&&!b){ // 自由入力のタイトルからも、それなりに取り出す
+    var m=full.match(/^(.+?)における(.+?)の(解析|検討|評価|比較|一考察|実証的研究|定量的評価|基礎的研究|研究|分析|調査)$/);
+    if(m){a=m[1];b=m[2];c=m[3]}else{b=full.replace(/(に関する|についての|の)?(研究|一考察|考察|検討|分析|調査)$/,'')||full}
+  }
+  return {full:has?full:'無題の卒論',has:has,a:a||'本学の学生',b:b||'やる気',c:c||'検討',hasA:!!a};
 }
 
-var TH_KIND={
-  exp:{how:'実験',angle:'条件の違い',claim:'条件によって{変わりうる|大きく変化する}',
-    m:['試料を{g}つの条件に分け、それぞれ{r}回ずつ測定を行った。','測定は同じ手順と時間帯でそろえ、{対照区|比較用の条件}を設けた。','得られた値は平均値と標準偏差で整理し、条件間の差を分散分析で検定した。'],
-    r:'条件Bでは対照区と比べて値が{pct}%高くなり、その差は統計的に有意であった({p})。',
-    r2:'一方、条件Cでは{明確な差はみられなかった|ばらつきが大きく、傾向は読み取れなかった}。'},
-  survey:{how:'アンケート調査',angle:'人々の意識と行動',claim:'回答者の属性によって受け止め方が異なる',
-    m:['大学生{n}名を対象に、Webアンケートを実施した。','質問は{k}項目で、多くは5段階で回答してもらった。','自由記述は内容ごとに分類し、出現数を数えた。'],
-    r:'{Q}に関する項目では、肯定的な回答が全体の{pct}%を占め、学年による差もみられた({p})。',
-    r2:'自由記述では「時間」「お金」「なんとなく」に関する記述が{多かった|目立った}。'},
-  lit:{how:'資料の読解',angle:'記述の変化',claim:'時期によって語られ方が異なる',
-    m:['関連する資料{n}点を集め、年代順に並べた。','それぞれの資料について、{a}つの観点から記述の特徴を整理した。','観点ごとに出現する語を数え、時期ごとに比べた。'],
-    r:'後期の資料ほど{Q}に関する記述が増え、全体の{pct}%を占めていた。',
-    r2:'ただし、表現の調子は資料によって{ばらつきが大きかった|かなり異なっていた}。'},
-  data:{how:'記録データの分析',angle:'量的な傾向',claim:'ほかの要因と強く結びついている',
-    m:['{n}件の記録を集め、{k}個の変数に整理した。','欠けている値のある記録は除き、残りを分析の対象とした。','変数どうしの関係を相関分析と重回帰分析で調べた。'],
-    r:'{Q}に関わる指標は、ほかの変数と比べて強い相関を示した(r = 0.{rr}, {p})。',
-    r2:'一方、季節による違いは{ほとんどみられなかった|小さかった}。'}
+/* 指導教員の赤ペン(研究室タイプで口調が変わる) */
+var RED={
+  oni:['根拠は?','論理が飛躍','で?','この文、要る?','単位!','意味不明','言い切るな','やり直し'],
+  hotoke:['いいね!','すばらしい','この発想、好き','いいと思う!','天才では','いいね!(2回目)'],
+  taiiku:['気合いが足りない!','もっと熱く!','声に出して読め!','ここで腕立て10回','根性!'],
+  core:['9時までに直すこと','提出は朝9時','時刻を書く','遅刻と同じ','明日の朝イチで'],
+  absent:['(未読)','(未読)','(出張先より:あとで見ます)','(未読)'],
+  yuru:['好きにしていいよ〜','いいんじゃない?','まあ、なんとかなるよ','ゆるくいこう'],
+  normal:['ここ要修正','図の単位は?','先行研究は?','冗長','誤字','もう少し具体的に']
 };
 
 var TH_CRAZY=['考察する。考察とは何か。','今日の夕飯はカレーうどんにしたい。','この結果には、たぶん猫が関係している。','締切は存在しない。存在しないものは守れない。','ねむい。ねむいねむいねむい。','ここまで書いて、保存したか不安になった。Ctrl+S。Ctrl+S。','先行研究によれば、布団はあたたかい。','p < 0.05。pとは何か。0.05とは何か。','窓の外が明るい。いつから朝なのか。','図1はあとで描く。図1とは何だったか。'];
@@ -1194,85 +1391,132 @@ function chaosify(d,o,R,P,tp){
   if(lv>=5){d.title+='(仮)(最終)(本当に最終)';d.sub='—'+P(TH_OTHER)+'に着目して—'}
 }
 
+/* 主な発見のパターン。卒論ごとに1つ選ぶ */
+var FINDINGS=[
+  {res:'{B}は締切が近づくほど{増加|乱高下}し、とくに午前2時に特異的な値を示した',why:'締切',peak:'午前2時',cor:'締切までの残り日数',fut:'締切のない世界での追試'},
+  {res:'{B}は曜日によって約{3|2.5|4}倍変動し、月曜日に最小、金曜日の夕方に最大となった',why:'曜日',peak:'金曜日の夕方',cor:'週末までの残り時間',fut:'祝日のある週での追試'},
+  {res:'{B}は気温や湿度とはほとんど関係せず、筆者の機嫌と最も強く相関した',why:'筆者の機嫌',peak:'筆者の機嫌がよい日',cor:'筆者の機嫌(自己評価)',fut:'機嫌のよい研究者による追試'},
+  {res:'{B}は、観測者が見ているときにだけ有意に増加した',why:'見られていること',peak:'見られているとき',cor:'観測者との距離',fut:'誰も見ていないところでの追試(原理的に困難)'},
+  {res:'{B}はコーヒーの摂取量に比例して増加し、3杯目を境に急激に低下した',why:'コーヒー',peak:'2杯目と3杯目のあいだ',cor:'コーヒーの杯数',fut:'デカフェによる追試'},
+  {res:'{B}は雨の日にだけ{増加|減少}し、晴れの日にはほとんど変化しなかった',why:'雨',peak:'雨の日',cor:'降水量',fut:'梅雨の時期の追試'}
+];
+
 function makeThesis(o){
   var R=mulberry(o.seed||1);
   var P=function(a){return a[Math.floor(R()*a.length)]};
   var N=function(a,b){return Math.floor(R()*(b-a+1))+a};
-  var tp=parseTheme(o.theme), K=TH_KIND[tp.kind], id=o.end;
-  var V={Q:tp.Q,q2:'本テーマ',how:K.how,angle:K.angle,
-    n:tp.kind==='survey'?N(48,320):tp.kind==='lit'?N(18,64):N(120,900),
-    k:N(5,14),a:N(3,6),g:N(3,4),r:N(3,6),pct:N(18,64),rr:N(42,78),early:o.early||0,
-    p:o.q<30?'p ≈ 0.05くらい':'p = '+P(['0.003','0.012','0.021','0.034','0.041'])};
-  V.n2=Math.max(3,Math.round(V.n*0.3));
+  var tp=parseTheme(o.theme,o.tp), id=o.end, st=o.stats||{};
+  var lab=o.lab||LAB_BY_ID.normal, sur=o.sur||'〇〇';
+  var A=tp.a, B=tp.b, C=tp.c;
+  var n=N(3,9)*(R()<0.5?1:7), mm=(N(12,98)/10).toFixed(1), sd=(N(3,40)/10).toFixed(1), rr=N(41,93);
+  var V={A:A,B:B,C:C,AB:(tp.hasA?A+'における':'')+B,n:n,m:mm,sd:sd,rr:rr,
+    sleeps:st.sleeps||0,writes:st.writes||0,minSan:st.minSan==null?100:st.minSan,cut:st.cut||0,backups:st.backups||0,
+    early:o.early||0,sur:sur,unit:P(['点','回','分','pt','単位(仮)','B値']),
+    p:o.q<30?'p ≈ 0.05くらい':'p = '+P(['0.003','0.012','0.021','0.034','0.049'])};
+  var FD=FINDINGS[Math.floor(R()*FINDINGS.length)];
+  V.why=FD.why;V.peak=FD.peak;V.cor=FD.cor;V.fut=FD.fut;
   function f(s){
-    s=s.replace(/\{([^{}]*\|[^{}]*)\}/g,function(_,a){return P(a.split('|'))});
-    s=s.replace(/\{claim\}/g,K.claim).replace(/\{([^{}]*\|[^{}]*)\}/g,function(_,a){return P(a.split('|'))});
+    s=s.replace(/\{res\}/g,FD.res);
+    s=s.replace(/\{([^{}]*\|[^{}]*)\}/g,function(_,x){return P(x.split('|'))});
     return s.replace(/\{(\w+)\}/g,function(_,k){return V[k]!=null?V[k]:''});
   }
   function F(a){return a.map(f)}
-  function pad(arr){var out=[];arr.forEach(function(s){out.push(s);out.push(P(TH_PADS)+s);if(R()<0.55)out.push(P(TH_FILL))});return out}
+  function pad(arr){var out=[];arr.forEach(function(x){out.push(x);out.push(P(TH_PADS)+x);if(R()<0.55)out.push(P(TH_FILL))});return out}
 
-  var M=F(K.m), Rr=f(K.r), Rr2=f(K.r2);
-  var I_GOOD=F(['{Q}は、身近でありながら、まだ十分に調べられていないテーマである。','{先行研究の多くは全体の傾向を述べるにとどまり|これまでの議論は全体の傾向に集中しており}、{angle}に注目した検討は少ない。','そこで本研究では、{how}によって{q2}を{angle}の観点から検討し、その特徴を明らかにすることを目的とする。']);
-  var I_MID=F(['{Q}は、私たちの生活にも関わりのあるテーマである。','本研究では、{how}によって{Q}の傾向を明らかにすることを目的とする。']);
-  var D_GOOD=F(['この結果は、{Q}が{claim}ことを示している。','{先行研究|従来の議論}で述べられてきた全体の傾向は、条件を分けてみると一様ではない可能性がある。','ただし、対象の数と範囲は限られており、結果をそのまま一般化することはできない。','今後は対象を広げ、ほかの方法でも同じ結果が得られるかを確かめたい。']);
-  var D_MID=F(['この結果から、{Q}にはある程度の傾向があると考えられる。','ただし、対象が限られているため、さらなる検討が必要である。']);
-  var C_GOOD=F(['本研究では、{how}によって{Q}を検討した。','その結果、{q2}は{claim}ことが明らかとなった。','本研究の結果は、{q2}を考える際の基礎的な資料になると考えられる。']);
-  var C_MID=F(['本研究では、{Q}について{how}を行い、一定の傾向を確かめた。','今後の課題として、対象を広げた検討が挙げられる。']);
-  var A_GOOD=F(['本研究では、{Q}について、{how}による検討を行った。']).concat([Rr],F(['これらの結果から、{q2}は{claim}ことが示唆された。']));
-  var ACK=o.lab&&o.lab.ack&&o.trust>=30?o.lab.ack.replace('指導教員に',(o.sur||'指導教員')+(o.sur?'先生に':'に')):o.trust>=70?'本研究を進めるにあたり、終始あたたかくご指導いただいた指導教員に深く感謝する。':o.trust<30?'本研究を進めるにあたり、ご指導いただいた(はずの)指導教員に感謝する。':'本研究を進めるにあたり、ご指導いただいた指導教員に感謝する。';
+  /* ---- 部品 ---- */
+  var abs=F(['本研究では、{AB}について、10日間という限られた期間で{C}を行った。',
+    'その結果、{res}({p})。',
+    '以上より、{AB}は、{why}によっておおむね説明できる可能性が示唆された。']);
+  var intro=F(['{B}は、古くから人類の関心事であった{(要出典)|(と思われる)|(筆者調べ)}。',
+    '近年、{AB}は{急速に|じわじわと|一部で熱狂的に}注目を集めている。',
+    'しかしながら、{AB}を締切10日前から体系的に{C}した研究は、筆者の知る限り存在しない。筆者も今回はじめて知った。',
+    'そこで本研究では、{AB}の実態を明らかにし、あわせて筆者が卒業することを目的とする。']);
+  var hypo=F(['仮説1:{B}は、{why}の影響を受ける。','仮説2:仮説1は正しい。']);
+  var method=F(['対象は{A}から{無作為に|目についた順に|声をかけやすい順に}選んだ{n}名(うち筆者1名)である。',
+    '調査期間は10日間で、そのうち筆者が睡眠に費やしたのは{sleeps}回であった。',
+    '{B}の測定は{目視|自己申告|勘}で行い、記録にはスマートフォンのメモアプリを用いた。',
+    '統計解析には表計算ソフト(バージョン不明)を用いた。']);
+  var result=F(['{B}の平均値は{m}±{sd}{unit}であった(表1)。',
+    '詳しくみると、{B}は{peak}に最大値を示し、{cor}と強い相関がみられた(r = 0.{rr}, n = {n}, {p})。',
+    'なお、一部の対象者は測定中に寝ていた。']);
+  var table={cap:f('表1 {AB}の条件別の値(n = {n})'),head:['条件','{B}'.replace('{B}',B)+'(平均)','備考'],
+    rows:[['ふだん',(N(20,60)/10).toFixed(1),P(['平常','特記事項なし','やや眠そう'])],
+          ['測定者が寝不足の日',(N(5,40)/10).toFixed(1),P(['記録なし(寝ていた)','値がにじんで読めない','やや低め'])],
+          [FD.peak,(N(70,99)/10).toFixed(1),P(['異常値?',FD.why+'の影響と思われる','測定者も異常'])]]};
+  var fig=f('図1 {cor}と{B}の関係(縦軸の単位はあとで決める)');
+  var disc=F(['この結果は、{AB}が{why}によって説明できる可能性を示している。',
+    '{ただし、測定者である筆者自身も締切に追われていたため、観測者効果を否定できない。|ただし、対象者の半数が測定の意図に気づいていた可能性がある。|ただし、筆者がこの結果を期待していたことは否定できない。}',
+    '本研究の限界は、サンプルサイズ、調査期間、そして筆者の体力である。']);
+  var concl=F(['本研究では、{AB}について{C}を行い、{why}と{B}の関係を明らかにした。','今後は、{fut}が望まれる。']);
 
-  var d={title:tp.full,sub:'',secs:[],tail:''};
-  function sec(h,p,li){d.secs.push({h:h,p:p||[],li:li||null})}
-  var H=['要旨','1 はじめに','2 方法','3 結果','4 考察','5 おわりに','謝辞'];
+  /* ---- プレイの痕跡を、本文の事実として書き込む ---- */
+  var notes=[];
+  if(V.minSan<30)notes.push(f('執筆期間中、筆者の正気度は最低{minSan}まで低下したが、本研究の結論には影響しないものとする。'));
+  if(V.cut>0)notes.push(f('本稿の約{cut}字は、指導教員の赤ペン添削により削除された。残っているのは要点だけである(と信じたい)。'));
+  if(o.marks&&o.marks.lost)notes.push('データの一部はPCのフリーズにより失われた。失われた部分には、たぶん最も重要な考察が含まれていた。');
+  if(o.marks&&o.marks.nosave)notes.push('筆者はバックアップを取らずに寝た夜がある。研究倫理上の問題はないが、精神衛生上の問題はある。');
+  if(V.backups>=5)notes.push(f('なお、筆者は{backups}回のバックアップを行った。バックアップの{C}は今後の課題である。'));
+  if(o.marks&&o.marks.coffee)notes.push('本研究の途中、キーボードにコーヒーがこぼれた。以降、本文に「の」が少ない箇所がある。');
+  if(o.marks&&o.marks.oversleep)notes.push('調査期間中、筆者は1日の半分を睡眠に費やした日がある。これは予備実験として扱う。');
+  if(o.marks&&o.marks.breakthrough)notes.push('実験の途中で、予想と真逆の結果が得られた。本稿ではこれを「発見」と呼ぶ。');
 
-  if(id==='early'||id==='excellent'){
-    d.sub='—'+K.angle+'に着目して—';
-    sec(H[0],A_GOOD);
-    sec(H[1],I_GOOD.concat(f('仮説として、{q2}は{claim}と考えた。')));
-    sec(H[2],M);
-    sec(H[3],[Rr,Rr2,'主な結果を図1と表1にまとめた。']);
-    sec(H[4],D_GOOD.slice(0,2).concat(f('本研究の新しさは、{q2}を{angle}という具体的な切り口で捉え直した点にある。'),D_GOOD.slice(2)));
-    var c=C_GOOD.slice();
-    if(id==='early')c.push(f('なお、本稿は締切の{early}日前に提出された。計画的に進めることも、研究の一部である。'));
-    sec(H[5],c);sec(H[6],[ACK]);
-  }else if(id==='graduate'){
-    sec(H[0],[A_GOOD[0],Rr]);
-    sec(H[1],I_MID);sec(H[2],M);sec(H[3],[Rr,'結果を図1に示す。']);
-    sec(H[4],o.q>=65?[D_GOOD[0]].concat(D_MID.slice(1)):D_MID);
-    sec(H[5],C_MID);sec(H[6],[ACK]);
+  var ACK=(lab.ack&&o.trust>=30?lab.ack.replace('指導教員に',sur+'先生に'):'本研究を進めるにあたり、ご指導いただいた'+sur+'先生に感謝する。')+
+    f('また、執筆を支えてくれたコーヒーと、{sleeps}回の睡眠に感謝する。');
+  var REFS=[f('[1] 研究室の先輩({年度不明|平成のどこか})『卒論_最終_本当に最終.docx』研究室共有フォルダ.'),
+    '[2] 筆者(2026)「昨日の自分のメモ」スマートフォンのメモアプリ, p.1(全1ページ).',
+    f('[3] {sur}先生の口ぐせ集(未刊行).')];
+
+  var d={title:tp.full,sub:'',secs:[],tail:'',table:null,fig:null,refs:null,red:[]};
+  function sec(h,p,li){var x={h:h,p:p||[],li:li||null};d.secs.push(x);return x}
+  var H=['要旨','1 はじめに','2 方法','3 結果','4 考察','5 おわりに','謝辞','参考文献'];
+  var good=id==='early'||id==='excellent';
+
+  if(good||id==='graduate'){
+    if(good)d.sub=f('—締切前10日間の{参与観察|定量的調査|記録}から—');
+    sec(H[0],abs);
+    sec(H[1],intro.concat(good?hypo:[]));
+    sec(H[2],good?method:method.slice(0,3));
+    var r3=sec(H[3],good?result:result.slice(0,2));r3.table=table;r3.fig=fig;
+    sec(H[4],disc.slice(0,good?3:2).concat(notes.slice(0,good?4:2)));
+    var c5=concl.slice();
+    if(id==='early')c5.push(f('なお、本稿は締切の{early}日前に提出された。締切は、守れる。'));
+    if(id==='excellent')c5.push('本研究が、同じく締切に追われるすべての学生の役に立てば幸いである。');
+    sec(H[5],c5);sec(H[6],[ACK]);sec(H[7],[],REFS);
   }else if(id==='charsonly'){
-    d.title=tp.has?tp.core+'に関する研究についての一考察':'無題の卒論についての一考察';
-    sec(H[0],pad([A_GOOD[0],Rr]));
-    sec(H[1],pad(I_MID));sec(H[2],pad(M.slice(0,2)));sec(H[3],pad([Rr]));
-    sec(H[4],pad(D_MID));sec(H[5],pad(C_MID).concat('以上で、本研究を終わる。前述のとおり、以上で本研究を終わる。'));
+    d.title=tp.full+'に関する研究についての一考察(増補版)';
+    sec(H[0],pad(abs.slice(0,2)));sec(H[1],pad(intro.slice(0,3)));sec(H[2],pad(method.slice(0,2)));
+    var rc=sec(H[3],pad(result.slice(0,1)));rc.table=table;
+    sec(H[4],pad(disc.slice(0,2)).concat(notes.slice(0,1)));
+    sec(H[5],pad(concl).concat('以上で、本研究を終わる。前述のとおり、以上で本研究を終わる。'));
+    sec(H[7],[],REFS.concat(REFS[0].replace('[1]','[4]')));
   }else if(id==='mercy'){
-    sec(H[0],[A_GOOD[0],Rr,'詳しい考察は今後の課題としたい。']);
-    sec(H[1],I_GOOD);sec(H[2],M);sec(H[3],[Rr,'(図1は準備中)']);
-    sec(H[4],[D_MID[0],'ただし、その理由については今後の課題としたい。','また、先行研究との比較も今後の課題としたい。','方法の妥当性についても、今後の課題としたい。']);
+    sec(H[0],[abs[0],'詳しい結果と考察は今後の課題としたい。']);
+    sec(H[1],intro);sec(H[2],method.slice(0,3));
+    var rm=sec(H[3],[result[0],'(図1は準備中)']);rm.table=table;
+    sec(H[4],[disc[0],f('ただし、{B}がなぜそうなるのかは今後の課題としたい。'),'先行研究との比較も今後の課題としたい。','そもそも本研究の目的も、今後の課題としたい。'].concat(notes.slice(0,1)));
     sec(H[5],['本研究では多くの課題が残ったが、それらはすべて今後の課題としたい。']);
     sec(H[6],[ACK]);
   }else if(id==='repeat'){
     sec(H[0],['(あとで書く)']);
-    sec(H[1],I_MID);sec(H[2],[M[0],'(手順の詳細はあとで書く)']);
-    sec(H[3],[],[f('データは途中まで取れた(n = {n2})'),'図1(作成予定)','表1(あとで貼る)','有意差:たぶんある']);
-    sec(H[4],[],['なぜこうなったか → 考え中','先行研究との比較 → ここに書く','']);
+    sec(H[1],intro.slice(0,3));sec(H[2],[method[0],'(手順の詳細はあとで書く)']);
+    sec(H[3],[],[f('{B}のデータは途中まで取れた(n = {n})'),'表1(あとで貼る)','図1(作成予定。縦軸の単位も予定)','有意差:たぶんある']);
+    sec(H[4],[],[f('{B}がこうなった理由 → 考え中'),'先行研究との比較 → ここに書く','']);
     d.tail='(以下、未完)';
   }else if(id==='sus'){
-    sec(H[0],F(['本稿は、{Q}をめぐる従来の議論を批判的に検討し、その多面的な含意を明らかにするものである。']).concat([Rr]));
-    sec(H[1],F(['{Q}について、前から少し気になっていたので調べてみることにした。','ネットで検索すると色々出てきたが、正直むずかしくてよく分からなかった。','なので、自分なりに{how}をやってみようと思う。']));
-    sec(H[2],['とりあえず、'+M[0],'やり方は、研究室の先輩に聞いて決めた。']);
-    sec(H[3],F(['得られた知見は、{Q}をめぐる従来の議論に対し、多層的かつ包括的な再解釈を迫るものである。']).concat([Rr,'とりわけ、当該現象の背後にある構造的要因は、看過し得ない理論的含意を有している。']));
-    sec(H[4],F(['以上の分析を踏まえると、{Q}は単一の要因に還元し得ない複合的な現象として把握されるべきである。','本稿の枠組みは、既存の研究潮流を批判的に継承しつつ、その射程を拡張する試みとして位置づけられる。']).concat('※この章から文体が急に変わったのは、気のせいである。'));
-    sec(H[5],F(['本稿は、{Q}に関する包括的な検討を通じて、新たな分析視角を提示した。']).concat('(指導教員のメモ:この章の構成、研究室の過去の卒論とよく似ていませんか?)'));
+    sec(H[0],F(['本稿は、{AB}をめぐる従来の議論を批判的に検討し、その多面的な含意を明らかにするものである。']));
+    sec(H[1],F(['{B}について、前から少し気になっていたので調べてみることにした。','ネットで調べたら色々出てきたが、正直むずかしくてよく分からなかった。','なので、自分なりに{C}をやってみようと思う。']));
+    sec(H[2],['とりあえず、'+method[0],'やり方は、研究室の先輩に聞いて決めた。']);
+    var rs=sec(H[3],F(['得られた知見は、{AB}をめぐる従来の議論に対し、多層的かつ包括的な再解釈を迫るものである。']).concat([result[1],'とりわけ、当該現象の背後にある構造的要因は、看過し得ない理論的含意を有している。']));rs.table=table;
+    sec(H[4],F(['以上の分析を踏まえると、{B}は単一の要因に還元し得ない複合的な現象として把握されるべきである。']).concat('※この章から文体が急に変わったのは、気のせいである。'));
+    sec(H[5],['本稿は、包括的な検討を通じて、新たな分析視角を提示した。','(指導教員のメモ:この章の構成、研究室の過去の卒論とよく似ていませんか?)']);
   }else if(id==='burnout'){
-    var cz=[];var pool=TH_CRAZY.slice();
+    var cz=[],pool=TH_CRAZY.slice();
     for(var i=0;i<5;i++)cz.push(pool.splice(Math.floor(R()*pool.length),1)[0]);
-    sec(H[0],[A_GOOD[0],'結果は、ね']);
-    sec(H[1],I_MID);sec(H[2],M);
-    sec(H[3],[Rr,'なお、図1は夢の中で見た。',cz[0]]);
-    sec(H[4],[D_MID[0].replace('考えられる','考えられる、と思う、たぶん'),cz[1],cz[2],cz[3]]);
-    sec(H[5],[f('本研究では、{Q}について'),cz[4].slice(0,6)+'……']);
+    sec(H[0],[abs[0],'結果は、ね']);
+    sec(H[1],intro.slice(0,3));sec(H[2],method.slice(0,2));
+    sec(H[3],[result[0],'なお、図1は夢の中で見た。',cz[0]]);
+    sec(H[4],[disc[0].replace('示している','示している、と思う、たぶん'),cz[1],cz[2],cz[3]]);
+    sec(H[5],[f('本研究では、{AB}について'),cz[4].slice(0,6)+'……']);
     d.tail='(原稿はここで途切れている)';
   }else{ /* blank */
     sec(H[0],['(未記入)']);
@@ -1280,19 +1524,19 @@ function makeThesis(o){
     d.tail='(以下、白紙)';
   }
 
-  /* ステータスによる小さな味付け */
-  if(o.san<25&&id!=='burnout'&&id!=='blank'){
-    var ds=d.secs.filter(function(s){return s.h===H[4]})[0];
-    if(ds)ds.p.push('※この段落は午前4時に書いた。'+P(TH_CRAZY));
+  /* ---- 赤ペン:段落のうしろに、研究室の口調でコメントを入れる ---- */
+  var redPool=RED[lab.id]||RED.normal;
+  var redN=lab.id==='hotoke'?3:lab.id==='absent'?1:Math.max(0,Math.min(5,Math.round((100-o.q)/22)));
+  if(id==='blank')redN=Math.min(redN,1);
+  var cand=d.secs.filter(function(x){return x.p.length&&x.h!=='謝辞'&&x.h!=='参考文献'});
+  for(var k=0;k<redN&&cand.length;k++){
+    var target=cand[Math.floor(R()*cand.length)];
+    (target.red=target.red||[]).push(P(redPool));
   }
-  if(o.sus>0&&id!=='sus'&&id!=='blank'){
-    var dr=d.secs.filter(function(s){return s.h===H[3]})[0];
-    if(dr)dr.p.push('(本節には、文体が不自然に整っている箇所がある)');
-  }
-  chaosify(d,o,R,P,tp);
-  var lab=o.lab||LAB_BY_ID.normal;
-  var sur=o.sur||'〇〇';
-  d.meta=['〇〇大学 〇〇学部 4年 '+sur+'研究室','提出者:あなた / 指導教員:'+sur+'先生','ゲーム内の字数 '+fmt(o.chars)+'字 ・ '+o.title+'('+o.score+'点)','カオス度 '+stars(o.chaos||0)];
+
+  chaosify(d,o,R,P,{has:true,core:B});
+  d.meta=['〇〇大学 〇〇学部 4年 '+sur+'研究室','提出者:あなた / 指導教員:'+sur+'先生',
+    'ゲーム内の字数 '+fmt(o.chars)+'字 ・ '+o.title+'('+o.score+'点)','カオス度 '+stars(o.chaos||0)];
   return d;
 }
 
@@ -1305,7 +1549,10 @@ function thesisHTML(d){
   d.secs.forEach(function(s){
     h+='<h5>■ '+esc(s.h)+'</h5>';
     if(s.p.length)h+='<p>'+s.p.map(esc).join('')+'</p>';
-    if(s.li)h+='<ul>'+s.li.map(function(x){return '<li>'+(x?esc(x):'&nbsp;')+'</li>'}).join('')+'</ul>';
+    if(s.table){var t=s.table;h+='<figure class="th-tab"><figcaption>'+esc(t.cap)+'</figcaption><table><thead><tr>'+t.head.map(function(c){return '<th>'+esc(c)+'</th>'}).join('')+'</tr></thead><tbody>'+t.rows.map(function(r){return '<tr>'+r.map(function(c){return '<td>'+esc(c)+'</td>'}).join('')+'</tr>'}).join('')+'</tbody></table></figure>'}
+    if(s.fig)h+='<figure class="th-fig"><div class="th-chart" aria-hidden="true"><i style="height:22%"></i><i style="height:35%"></i><i style="height:30%"></i><i style="height:58%"></i><i style="height:96%"></i></div><figcaption>'+esc(s.fig)+'</figcaption></figure>';
+    if(s.li)h+=(s.h==='参考文献'?'<ul class="th-refs">':'<ul>')+s.li.map(function(x){return '<li>'+(x?esc(x):'&nbsp;')+'</li>'}).join('')+'</ul>';
+    (s.red||[]).forEach(function(r){h+='<p class="th-red">'+esc(r)+'</p>'});
     (s.x||[]).forEach(function(x){h+=extraHTML(x)});
   });
   if(d.tail)h+='<p class="th-tail">'+esc(d.tail)+'</p>';
@@ -1330,7 +1577,10 @@ function thesisText(d){
   d.secs.forEach(function(s){
     t+='\n## '+s.h+'\n\n';
     if(s.p.length)t+=s.p.join('')+'\n';
+    if(s.table){t+='\n'+s.table.cap+'\n\n| '+s.table.head.join(' | ')+' |\n|'+s.table.head.map(function(){return '---'}).join('|')+'|\n'+s.table.rows.map(function(r){return '| '+r.join(' | ')+' |'}).join('\n')+'\n'}
+    if(s.fig)t+='\n('+s.fig+')\n';
     if(s.li)t+=s.li.map(function(x){return '- '+x}).join('\n')+'\n';
+    (s.red||[]).forEach(function(r){t+='\n> 赤ペン:'+r+'\n'});
     (s.x||[]).forEach(function(x){t+=extraText(x)});
   });
   if(d.tail)t+='\n'+d.tail+'\n';
@@ -1356,7 +1606,7 @@ function saveFile(name,text,say){
 
 function setupThesis(E,ctx,score,theme){
   var sec=$('#thesis');if(!sec)return;
-  var snap={chaos:chaosLevel(),marks:Object.assign({},S.marks),scraps:S.scraps.slice(),lab:L.lab,sur:L.sur,theme:theme,end:E.id,title:E.title,score:score,early:ctx.early,chars:S.chars,q:S.q,trust:S.trust,san:S.san,sus:S.sus};
+  var snap={tp:S_TITLE,stats:{sleeps:S.sleeps,writes:S.writes,minSan:S.minSan,cut:S.cut,backups:S.backups},chaos:chaosLevel(),marks:Object.assign({},S.marks),scraps:S.scraps.slice(),lab:L.lab,sur:L.sur,theme:theme,end:E.id,title:E.title,score:score,early:ctx.early,chars:S.chars,q:S.q,trust:S.trust,san:S.san,sus:S.sus};
   var gen=$('#gen'),paper=$('#paper'),msg=$('#thmsg'),btns=$('#paperbtns'),aiBtn=$('#ai');
   var last='',seed=(Date.now()^Math.floor(Math.random()*1e9))>>>0;
   function say(t){msg.textContent=t;msg.hidden=!t}

@@ -137,10 +137,9 @@ function shutterTex() {
  */
 export function play(spec) {
   return new Promise(resolve => {
-    try {
-      if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return resolve();
-    } catch (e) {}
-    let done = false, raf = 0;
+    let calm = false; // 視差効果を減らす設定:シーンは見せるが、カメラは動かさない
+    try { calm = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) {}
+    let done = false, raf = 0, why = '';
     if (!document.getElementById('cine-css')) { const s = el('style'); s.id = 'cine-css'; s.textContent = CSS; document.head.appendChild(s); }
     const ov = el('div', 'cine' + (spec.frame === 'phone' ? ' cine-phone' : ''));
     ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-label', spec.label || 'ムービー');
@@ -161,20 +160,20 @@ export function play(spec) {
       if (done) return; done = true;
       cancelAnimationFrame(raf);
       ov.classList.add('out');
-      setTimeout(() => { if (ov.parentNode) ov.parentNode.removeChild(ov); resolve(); }, 330);
+      setTimeout(() => { if (ov.parentNode) ov.parentNode.removeChild(ov); resolve(why ? { why } : { ok: true }); }, 330);
     }
     skip.addEventListener('click', e => { e.stopPropagation(); finish(); });
     ov.addEventListener('click', () => { if (ov.dataset.ready) finish(); });
-    const giveUp = setTimeout(() => { if (!ov.dataset.ready) finish(); }, 9000);
+    const giveUp = setTimeout(() => { if (!ov.dataset.ready) { why = '人物データの読み込みに時間がかかりすぎた'; finish(); } }, 25000);
 
     let r;
-    try { r = renderer(); } catch (e) { clearTimeout(giveUp); return finish(); }
+    try { r = renderer(); } catch (e) { clearTimeout(giveUp); why = 'この端末では3D表示(WebGL)が使えない'; return finish(); }
     load(spec.model).then(gltf => {
       if (done) return;
       clearTimeout(giveUp);
       loading.remove();
       start(gltf);
-    }).catch(() => { clearTimeout(giveUp); finish(); });
+    }).catch(e => { clearTimeout(giveUp); why = '人物データを読み込めなかった(' + String(e && e.message || e).slice(0, 80) + ')'; finish(); });
 
     function start(gltf) {
       const W = ov.clientWidth, H = ov.clientHeight;
@@ -274,7 +273,8 @@ export function play(spec) {
         const s = shot(c, h), k = t - shotT;
         cam.fov = s.fov; cam.aspect = W / H; cam.updateProjectionMatrix();
         const dir = new THREE.Vector3(s.at[0] - s.pos[0], s.at[1] - s.pos[1], s.at[2] - s.pos[2]).normalize();
-        cam.position.set(s.pos[0] + dir.x * k * 0.04, s.pos[1] + dir.y * k * 0.04, s.pos[2] + dir.z * k * 0.04);
+        const dolly = calm ? 0 : 0.04;
+        cam.position.set(s.pos[0] + dir.x * k * dolly, s.pos[1] + dir.y * k * dolly, s.pos[2] + dir.z * k * dolly);
         cam.lookAt(s.at[0], s.at[1], s.at[2]);
         bg.style.transform = `scale(${s.zoom + k * 0.012}) translateX(${-cam.position.x * 18}px)`;
         bg.style.filter = `blur(${s.blur}px) saturate(.92)`;
