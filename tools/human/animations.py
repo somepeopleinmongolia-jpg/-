@@ -45,14 +45,12 @@ def rest_pose(rig, bones):
         want = Vector((s * 0.16, 0.04, -1)).normalized()
         A = d.rotation_difference(want)
         base[f'upperarm_{side}'] = A
-        # 肘を少し前に曲げる(下ろした腕の向きで見て X 回転)
-        base[f'lowerarm_{side}'] = A.inverted() @ q((1, 0, 0), 10) @ A
+        # 素体は肘が前に約45度曲がっているので、上腕の延長にそろえてから 10 度だけ前に曲げる
+        lb = bones[f'lowerarm_{side}']
+        dlo = Vector((lb['tail'] - lb['head']).tolist()).normalized()
+        R = (A @ dlo).rotation_difference(q((1, 0, 0), -10) @ want)
+        base[f'lowerarm_{side}'] = A.inverted() @ R @ A
         # 指を軽く曲げる
-        lo = q((1, 0, 0), 10) @ A
-        for f in ('index', 'middle', 'ring', 'pinky'):
-            base[f'{f}_01_{side}'] = lo.inverted() @ q((1, 0, 0), 12) @ lo
-            for k in (2, 3):
-                base[f'{f}_0{k}_{side}'] = lo.inverted() @ q((1, 0, 0), 14) @ lo
     return base
 
 def new_action(rig, name):
@@ -92,33 +90,49 @@ def add_all(rig, body, bones):
         })
     finish(rig, act, 0, 120)
 
-    # walk:その場歩き(1秒で2歩)。前進はゲーム側で動かす
-    act = new_action(rig, 'walk')
-    for f in range(0, 31, 2):
-        t = f / FPS
-        ph = 2 * math.pi * t / 1.0
-        sw = math.sin(ph)
-        P.key(f, {
-            'thigh_l': q((1, 0, 0), -24 * sw),
-            'thigh_r': q((1, 0, 0), 24 * sw),
-            'calf_l': q((1, 0, 0), -max(0, 38 * math.sin(ph - 1.2))),
-            'calf_r': q((1, 0, 0), -max(0, 38 * math.sin(ph + math.pi - 1.2))),
-            'foot_l': q((1, 0, 0), 10 * math.sin(ph - 0.6)),
-            'foot_r': q((1, 0, 0), 10 * math.sin(ph + math.pi - 0.6)),
-            'upperarm_l': q((1, 0, 0), 16 * sw),
-            'upperarm_r': q((1, 0, 0), -16 * sw),
-            'pelvis': q((0, 0, 1), 4 * sw),
-            'spine_03': q((0, 0, 1), -5 * sw) @ q((1, 0, 0), 3),
-            '_loc': (0, 0, 0.012 * abs(math.cos(ph))),
-        })
-    finish(rig, act, 0, 30)
+    def gait(name, period, frames, thigh, calf, arm, lean, bob, elbow=0):
+        act = new_action(rig, name)
+        for f in range(0, frames + 1, 2):
+            t = f / FPS
+            ph = 2 * math.pi * t / period
+            sw = math.sin(ph)
+            x = {
+                'thigh_l': q((1, 0, 0), -thigh * sw),
+                'thigh_r': q((1, 0, 0), thigh * sw),
+                'calf_l': q((1, 0, 0), max(0, calf * math.sin(ph - 1.3))),
+                'calf_r': q((1, 0, 0), max(0, calf * math.sin(ph + math.pi - 1.3))),
+                'foot_l': q((1, 0, 0), -8 * math.sin(ph - 0.6)),
+                'foot_r': q((1, 0, 0), -8 * math.sin(ph + math.pi - 0.6)),
+                'upperarm_l': q((1, 0, 0), arm * sw),
+                'upperarm_r': q((1, 0, 0), -arm * sw),
+                'pelvis': q((0, 0, 1), 4 * sw),
+                'spine_01': q((1, 0, 0), lean),
+                'spine_03': q((0, 0, 1), -5 * sw),
+                '_loc': (0, 0, bob * abs(math.cos(ph))),
+            }
+            if elbow:
+                x['lowerarm_l'] = q((1, 0, 0), -elbow); x['lowerarm_r'] = q((1, 0, 0), -elbow)
+            P.key(f, x)
+        finish(rig, act, 0, frames)
+
+    # walk:その場歩き(1秒で2歩)/ run:小走り。前進はゲーム側で動かす
+    gait('walk', 1.0, 30, 24, 40, 16, 2, 0.012)
+    gait('run', 0.6, 18, 38, 80, 40, 10, 0.03, elbow=70)
+
+    def ease(t):
+        t = max(0.0, min(1.0, t))
+        return (1 - math.cos(math.pi * t)) / 2
+
+    def hold(t, a, b, c):
+        """0→1(a秒まで)→保持(bまで)→0(cまで)"""
+        if t < a: return ease(t / a)
+        if t < b: return 1.0
+        return 1 - ease((t - b) / (c - b))
 
     # bow:会釈(2秒)
     act = new_action(rig, 'bow')
     for f in range(0, 61, 3):
-        t = f / 60
-        k = math.sin(math.pi * min(1, t / 0.75)) if t < 0.75 else 0
-        k = (1 - math.cos(math.pi * min(t / 0.35, 1))) / 2 if t < 0.35 else (1 if t < 0.55 else (1 + math.cos(math.pi * (t - 0.55) / 0.45)) / 2)
+        k = hold(f / FPS, 0.7, 1.1, 2.0)
         P.key(f, {
             'spine_01': q((1, 0, 0), 10 * k), 'spine_02': q((1, 0, 0), 10 * k),
             'spine_03': q((1, 0, 0), 8 * k), 'neck_01': q((1, 0, 0), 8 * k), 'head': q((1, 0, 0), 6 * k),
@@ -133,26 +147,77 @@ def add_all(rig, body, bones):
         P.key(f, {'neck_01': q((1, 0, 0), 9 * max(0, k)), 'head': q((1, 0, 0), 7 * max(0, k))})
     finish(rig, act, 0, 36)
 
+    # tilt:首をかしげる(2秒、保持して戻る)
+    act = new_action(rig, 'tilt')
+    for f in range(0, 61, 3):
+        k = hold(f / FPS, 0.5, 1.5, 2.0)
+        P.key(f, {'neck_01': q((0, 1, 0), -9 * k), 'head': q((0, 1, 0), -10 * k) @ q((0, 0, 1), 6 * k)})
+    finish(rig, act, 0, 60)
+
+    # shake:首を横に振る(1.4秒)
+    act = new_action(rig, 'shake')
+    for f in range(0, 43, 2):
+        t = f / 42
+        a = 22 * math.sin(2 * math.pi * 2 * t) * math.sin(math.pi * t)
+        P.key(f, {'neck_01': q((0, 0, 1), a * 0.45), 'head': q((0, 0, 1), a * 0.55)})
+    finish(rig, act, 0, 42)
+
     # armsfold:腕組み(保持)
     act = new_action(rig, 'armsfold')
-    fold = {}
-    for side, s in (('l', 1), ('r', -1)):
-        fold[f'upperarm_{side}'] = q((1, 0, 0), 40) @ q((0, 0, 1), -s * 25)
-        fold[f'lowerarm_{side}'] = q((0, 0, 1), -s * 95)
-    for f in (0, 60):
-        x = dict(fold); x['neck_01'] = q((1, 0, 0), -3)
+    for f in (0, 30, 60):
+        x = {'neck_01': q((1, 0, 0), -3)}
+        for side, s in (('l', 1), ('r', -1)):
+            x[f'upperarm_{side}'] = q((1, 0, 0), -38) @ q((0, 1, 0), -s * 6)
+            x[f'lowerarm_{side}'] = q((0, 0, 1), -s * 100) @ q((1, 0, 0), -55)
         P.key(f, x)
     finish(rig, act, 0, 60)
 
-    # handover:両手で差し出す(2秒、最後は差し出したまま)
+    # handover:両手で差し出す/受け取る(2秒、最後は差し出したまま)
     act = new_action(rig, 'handover')
     for f in range(0, 61, 3):
-        t = min(1, f / 40)
-        k = (1 - math.cos(math.pi * t)) / 2
-        x = {}
+        k = ease(f / 40)
+        x = {'spine_03': q((1, 0, 0), 6 * k)}
         for side, s in (('l', 1), ('r', -1)):
-            x[f'upperarm_{side}'] = q((1, 0, 0), 55 * k) @ q((0, 0, 1), -s * 8 * k)
-            x[f'lowerarm_{side}'] = q((1, 0, 0), 35 * k)
-        x['spine_03'] = q((1, 0, 0), 6 * k)
+            x[f'upperarm_{side}'] = q((1, 0, 0), -45 * k) @ q((0, 1, 0), s * 6 * k)
+            x[f'lowerarm_{side}'] = q((1, 0, 0), -40 * k)
         P.key(f, x)
+    finish(rig, act, 0, 60)
+
+    # wave:右手を挙げて振る(2.4秒)
+    act = new_action(rig, 'wave')
+    for f in range(0, 73, 2):
+        t = f / FPS
+        k = hold(t, 0.4, 2.0, 2.4)
+        w = math.sin(2 * math.pi * 2.2 * t) * k
+        P.key(f, {
+            'upperarm_r': q((0, 1, 0), 75 * k) @ q((1, 0, 0), -15 * k),
+            'lowerarm_r': q((0, 1, 0), 75 * k + 18 * w),
+            'head': q((0, 1, 0), -4 * k),
+        })
+    finish(rig, act, 0, 72)
+
+    # beckon:「ちょっと来て」の手招き(2.4秒)
+    act = new_action(rig, 'beckon')
+    for f in range(0, 73, 2):
+        t = f / FPS
+        k = hold(t, 0.4, 2.0, 2.4)
+        w = (math.sin(2 * math.pi * 1.6 * t) * 0.5 + 0.5) * k
+        P.key(f, {
+            'upperarm_r': q((1, 0, 0), -50 * k) @ q((0, 1, 0), 10 * k),
+            'lowerarm_r': q((1, 0, 0), -(40 + 40 * w)),
+            'hand_r': q((1, 0, 0), -30 * w),
+            'neck_01': q((1, 0, 0), 4 * k),
+        })
+    finish(rig, act, 0, 72)
+
+    # cheer:両手を挙げる(2秒、保持)
+    act = new_action(rig, 'cheer')
+    for f in range(0, 61, 3):
+        k = ease(f / 15)
+        b = 0.02 * abs(math.sin(2 * math.pi * 1.5 * f / FPS)) * k
+        P.key(f, {
+            'upperarm_l': q((0, 1, 0), -150 * k), 'upperarm_r': q((0, 1, 0), 150 * k),
+            'lowerarm_l': q((0, 1, 0), -15 * k), 'lowerarm_r': q((0, 1, 0), 15 * k),
+            'neck_01': q((1, 0, 0), -8 * k), '_loc': (0, 0, b),
+        })
     finish(rig, act, 0, 60)

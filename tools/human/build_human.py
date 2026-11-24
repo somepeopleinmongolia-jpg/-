@@ -15,24 +15,39 @@
 import argparse, gzip, json, math, os, sys
 import numpy as np
 
+def C(**k):
+    base = dict(gender=1.0, age=0.7, muscle=0.5, weight=0.5, height=0.5,
+                race=dict(asian=0.88, caucasian=0.12, african=0.0),
+                skin=(0.82, 0.64, 0.51), hair=(0.05, 0.045, 0.045), hair_gray=0.0, hair_style='short',
+                top=(0.5, 0.5, 0.5), pants=(0.22, 0.23, 0.26), shoes=(0.12, 0.09, 0.07), brow=0.55)
+    base.update(k)
+    return base
+
+# 登場人物(すべて架空)。age: 0.5=25歳, 0.75≒57歳, 1.0=90歳
 CHARS = {
-    # age: 0.5=25歳, 1.0=90歳。race: asian/caucasian/african の比率
-    'professor': dict(gender=1.0, age=0.74, muscle=0.42, weight=0.62, height=0.45,
-                      race=dict(asian=0.85, caucasian=0.15, african=0.0),
-                      skin=(0.80, 0.62, 0.50), hair=(0.05, 0.045, 0.045), hair_gray=0.12,
-                      top=(0.36, 0.33, 0.30), top_kind='cardigan', inner=(0.90, 0.89, 0.86),
-                      pants=(0.22, 0.23, 0.26), shoes=(0.12, 0.09, 0.07), brow=0.55),
-    'clerk': dict(gender=0.0, age=0.58, muscle=0.45, weight=0.45, height=0.42,
-                  race=dict(asian=0.9, caucasian=0.1, african=0.0),
-                  skin=(0.86, 0.68, 0.56), hair=(0.10, 0.08, 0.07), hair_gray=0.0,
-                  top=(0.18, 0.22, 0.32), top_kind='jacket', inner=(0.95, 0.95, 0.94),
-                  pants=(0.18, 0.20, 0.28), shoes=(0.08, 0.07, 0.07), brow=0.45),
-    'student': dict(gender=1.0, age=0.52, muscle=0.5, weight=0.5, height=0.55,
-                    race=dict(asian=0.9, caucasian=0.1, african=0.0),
-                    skin=(0.83, 0.64, 0.51), hair=(0.09, 0.08, 0.08), hair_gray=0.0,
-                    top=(0.55, 0.57, 0.52), top_kind='hoodie', inner=(0.55, 0.57, 0.52),
-                    pants=(0.20, 0.25, 0.36), shoes=(0.85, 0.85, 0.83), brow=0.6),
+    'prof_normal': C(age=0.74, muscle=0.42, weight=0.62, height=0.45, hair_gray=0.12, top=(0.36, 0.33, 0.30)),
+    'prof_hotoke': C(age=0.84, muscle=0.35, weight=0.8, height=0.4, hair_gray=0.75, skin=(0.84, 0.66, 0.53),
+                     top=(0.74, 0.63, 0.47), pants=(0.36, 0.28, 0.22)),
+    'prof_oni': C(age=0.66, muscle=0.5, weight=0.3, height=0.62, hair_gray=0.05, brow=0.85,
+                  top=(0.11, 0.12, 0.16), pants=(0.11, 0.12, 0.16), shoes=(0.05, 0.05, 0.05)),
+    'prof_taiiku': C(age=0.62, muscle=0.95, weight=0.55, height=0.58, hair_style='buzz', skin=(0.74, 0.54, 0.40),
+                     top=(0.62, 0.12, 0.13), pants=(0.10, 0.12, 0.26), shoes=(0.90, 0.90, 0.88)),
+    'prof_core': C(gender=0.0, age=0.7, muscle=0.45, weight=0.42, height=0.5, hair_style='bob', hair_gray=0.2,
+                   top=(0.86, 0.87, 0.88), outer=(0.33, 0.35, 0.40), outer_kind='open', pants=(0.20, 0.21, 0.24), brow=0.45),
+    'prof_absent': C(age=0.72, muscle=0.45, weight=0.5, height=0.55, hair_gray=0.4,
+                     top=(0.55, 0.44, 0.30), pants=(0.62, 0.56, 0.44)),
+    'prof_yuru': C(age=0.58, muscle=0.45, weight=0.5, height=0.52, top=(0.40, 0.44, 0.31),
+                   pants=(0.20, 0.27, 0.42), shoes=(0.88, 0.88, 0.86)),
+    'clerk': C(gender=0.0, age=0.6, muscle=0.45, weight=0.45, height=0.42, hair_style='bob', skin=(0.86, 0.68, 0.56),
+               top=(0.94, 0.94, 0.93), outer=(0.15, 0.19, 0.30), outer_kind='open', pants=(0.17, 0.20, 0.28), shoes=(0.08, 0.07, 0.07), brow=0.45),
+    'friend': C(age=0.52, muscle=0.55, weight=0.5, height=0.56, top=(0.52, 0.54, 0.50),
+                pants=(0.18, 0.24, 0.36), shoes=(0.86, 0.86, 0.84), brow=0.6),
+    'lover': C(gender=0.0, age=0.51, muscle=0.45, weight=0.42, height=0.45, hair_style='bob', skin=(0.87, 0.69, 0.57),
+               hair=(0.12, 0.08, 0.06), top=(0.86, 0.66, 0.68), outer=(0.93, 0.89, 0.81), outer_kind='open', pants=(0.70, 0.64, 0.55), shoes=(0.85, 0.82, 0.78), brow=0.4),
+    'mother': C(gender=0.0, age=0.8, muscle=0.4, weight=0.66, height=0.38, hair_style='bob', hair_gray=0.3,
+                top=(0.72, 0.56, 0.26), outer=(0.80, 0.36, 0.34), outer_kind='apron', pants=(0.36, 0.30, 0.25), brow=0.4),
 }
+CHARS['professor'] = CHARS['prof_normal']
 
 GROUND = [0.0]  # 足裏を z=0 に合わせるためのずらし量(位置にだけ足す)
 
@@ -154,6 +169,10 @@ def main():
     n = len(V0)
     print('verts', n, 'faces', len(faces))
     V = shape_body(V0, mp, c)
+    if c['gender'] < 0.5:
+        # 服の上から体の線が出すぎないよう、胸の張り出しを控えめにする
+        for t in ('breast-point-decr', 'nipple-point-decr'):
+            V = V + load_target(os.path.join(mp, 'targets', 'breast', t + '.target.gz'), n)
     GROUND[0] = -obj2bl(V[:13380])[:, 2].min()
     blink = (expr_delta(mp, 'eye-left-closure', n, c['race']) + expr_delta(mp, 'eye-right-closure', n, c['race']))
     mouth = expr_delta(mp, 'mouth-open', n, c['race'])
@@ -253,6 +272,7 @@ def main():
 
     def make_mat(name, rgb, rough=0.6, vcol=False, metal=0.0):
         m = bpy.data.materials.new(name)
+        m.use_backface_culling = name not in ('Bob', 'Hair')
         m.use_nodes = True
         nt = m.node_tree
         bsdf = nt.nodes.get('Principled BSDF')
@@ -325,7 +345,7 @@ def main():
 
     # ---------------- 服・髪の殻
     Nrm = vertex_normals(P, [vi for vi, _, _ in body_faces])
-    def shell(name, face_list, push, rgb, rough=0.8, smooth=2, src_positions=None, taper=0, pmul=None):
+    def shell(name, face_list, push, rgb, rough=0.8, smooth=2, src_positions=None, taper=0, pmul=None, drape=False):
         pos = (src_positions if src_positions is not None else P)
         Nl = vertex_normals(pos, [vi for vi, _, _ in face_list])
         pw = np.full(len(pos), 1.0)
@@ -357,16 +377,31 @@ def main():
                 e = (min(a, b), max(a, b)); edge_count[e] = edge_count.get(e, 0) + 1
         border = {i for e, k in edge_count.items() if k == 1 for i in e}
         idx = [i for i in nb if i not in border]
+        if drape:
+            # 胸の一番前の点から下は、布がまっすぐ垂れる(谷間やアンダーバストに沿わない)。左右の端へは徐々に弱める
+            used = sorted({i for vi, _, _ in face_list for i in vi})
+            chest = [i for i in used if dom[i] == 'spine_03' and abs(newpos[i, 0]) < 0.2]
+            ap = min(chest, key=lambda i: newpos[i, 1])
+            ay, az = newpos[ap, 1], newpos[ap, 2]
+            for i in used:
+                x, y, z = newpos[i]
+                if dom[i] not in ('spine_01', 'spine_02', 'spine_03', 'pelvis') or y >= 0:
+                    continue
+                wx = min(1.0, max(0.0, 1 - (abs(x) - 0.10) / 0.10))
+                wz = min(1.0, max(0.0, (z - (az - 0.26)) / 0.06)) * min(1.0, max(0.0, (az + 0.04 - z) / 0.04))
+                front = ay + 0.004 + max(0.0, az - z) * 0.16
+                if y > front:
+                    newpos[i, 1] = y + (front - y) * wx * wz
         # Taubin 平滑化(縮まずに細かい凹凸だけ消す)
         nbl = [list(nb[i]) for i in idx]
-        for it in range(smooth * 2):
+        for it in range(smooth * 2 if idx else 0):
             lam = 0.5 if it % 2 == 0 else -0.53
             avg = np.array([newpos[l].mean(0) for l in nbl])
             newpos[idx] = newpos[idx] + lam * (avg - newpos[idx])
         # 縁(襟・袖口・裾)のギザギザを、縁に沿ってならす
         bn = {i: [j for j in nb[i] if j in border and (min(i, j), max(i, j)) in edge_count and edge_count[(min(i, j), max(i, j))] == 1] for i in border}
         bl = [i for i in border if len(bn[i]) == 2]
-        for _ in range(smooth):
+        for _ in range(smooth if bl else 0):
             avg = np.array([newpos[bn[i]].mean(0) for i in bl])
             newpos[bl] = newpos[bl] * 0.5 + avg * 0.5
         return build_mesh(name, face_list, newpos, {name: make_mat(name, rgb, rough)})
@@ -395,7 +430,21 @@ def main():
             return cz < neck_cut
         return cz > pz - 0.05
     top_faces = [(vi, ti) for vi, ti in body_only if top_ok(vi)]
-    shell('Top', [(vi, ti, 'Top') for vi, ti in top_faces], 0.018, c['top'], 0.9, smooth=60)
+    shell('Top', [(vi, ti, 'Top') for vi, ti in top_faces], 0.018, c['top'], 0.9, smooth=60, drape=True)
+    # 羽織りもの:前開きの上着(open)/エプロン(apron)
+    ok = c.get('outer_kind')
+    if ok:
+        def cen(vi):
+            return P[vi].mean(0)
+        if ok == 'open':
+            outer = [(vi, ti, 'Outer') for vi, ti in top_faces
+                     if not (abs(cen(vi)[0]) < 0.05 and cen(vi)[1] < 0 and cen(vi)[2] < neck_cut - 0.02)]
+            shell('Outer', outer, 0.032, c['outer'], 0.85, smooth=40, drape=True)
+        else:
+            apron = [(vi, ti, 'Outer') for vi, ti in body_only
+                     if dom[vi[0]] in ('spine_01', 'spine_02', 'spine_03', 'pelvis', 'thigh_l', 'thigh_r')
+                     and abs(cen(vi)[0]) < 0.14 and cen(vi)[1] < -0.02 and pz - 0.06 < cen(vi)[2] < neck_cut - 0.1]
+            shell('Outer', apron, 0.045, c['outer'], 0.8, smooth=30, drape=True)
     # ズボン:タイツ補助メッシュのうち足首より上
     ank = min(bones['foot_l']['head'][2], bones['foot_r']['head'][2])
     waist = bones['pelvis']['head'][2] + 0.09
@@ -461,9 +510,17 @@ def main():
         for k, v in enumerate(vs):
             t = np.clip((by - v[1]) / 0.03 + 0.5, 0, 1)  # つま先(-Y)ほど ball
             gb.add([k], float(t), 'REPLACE'); gf.add([k], float(1 - t), 'REPLACE')
-    hair_faces = [(vi, ti, 'Hair') for vi, ti in body_only if all(hw[i] > 0.9 for i in vi)]
-    crown = 1 + 1.6 * sig((dz - 0.08) / 0.015) + 0.6 * sig((dy - 0.06) / 0.015)
-    shell('Hair', hair_faces, 0.009, tuple(hair_rgb), 0.75, smooth=6, taper=3, pmul=crown)
+    style = c.get('hair_style', 'short')
+    if style != 'buzz':
+        hair_faces = [(vi, ti, 'Hair') for vi, ti in body_only if all(hw[i] > 0.9 for i in vi)]
+        crown = 1 + 1.6 * sig((dz - 0.08) / 0.015) + 0.6 * sig((dy - 0.06) / 0.015)
+        shell('Hair', hair_faces, 0.009, tuple(hair_rgb), 0.75, smooth=6, taper=3, pmul=crown)
+    if style == 'bob':
+        # 補助メッシュの長髪を肩の上で切り、顔の前にかからない部分だけ使う
+        shoulder = max(bones['clavicle_l']['head'][2], bones['clavicle_r']['head'][2]) + 0.07
+        bob = [(vi, ti, 'Bob') for vi, ti in groups['helper-hair'] if P[vi, 2].mean() > shoulder and P[vi, 1].mean() > eyeC[1] + 0.012]
+        if bob:
+            shell('Bob', bob, 0.004, tuple(hair_rgb), 0.75, smooth=2)
 
     # ---------------- 骨
     arm = bpy.data.armatures.new('Rig')

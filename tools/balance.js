@@ -14,6 +14,7 @@ const SHIM=`(()=>{
   window.cancelAnimationFrame=()=>{};
   window.AudioContext=window.webkitAudioContext=undefined;
   navigator.vibrate=()=>true;
+  window.__noCine=true; // 3Dのカットシーンは飛ばす
 })();`;
 
 const BOT=`window.__play=async function(strategy){

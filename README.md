@@ -5,13 +5,21 @@
 公開URL(Firebase Hosting):https://sotsuron-girigiri.web.app/
 
 ## ファイル
-- `index.html` … ゲーム本体。これだけで遊べる。
+- `index.html` … ゲーム本体。単体でも遊べる(カットシーンなし)。
+- `cine.js` … 3D人物のカットシーン。`vendor/three/`(Three.js r170, MIT)と `assets/people/` を使う。
 - `og.png` … シェア用の画像(1200×630)。OGPタグから参照する。
-- `firebase.json` / `.firebaserc` … Firebase Hosting の設定。公開するのは `index.html` と `og.png` だけ(デプロイ前に `tools/build.js` が `public/` にコピーする)。
+- `firebase.json` / `.firebaserc` … Firebase Hosting の設定。デプロイ前に `tools/build.js` が、公開するファイル(`index.html`・`og.png`・`cine.js`・`vendor/`・`assets/`)だけを `public/` にコピーする。
 - `.github/workflows/firebase-hosting.yml` … push時に自動で公開するワークフロー。
 - `tools/set-url.js` … 公開URL(OGP・シェア文・FirebaseのプロジェクトID)を一括で差し替える。
 - `tools/balance.js` … 自動プレイでエンディングの出現率を測る(Playwright)。`node tools/balance.js 300`
 - `tools/og.html`, `tools/og.js` … `og.png` の元と書き出しスクリプト。`node tools/og.js`
+
+## 3Dの人物カットシーン
+- 配属(研究室タイプ別7種)、提出(エンディング別の窓口の反応)、イベント4種(教授のメール・同期の飲みの誘い・恋人・母のビデオ通話)で、3DCGの人物が出てくる。
+- 再生は `cine.js`(Three.js を `vendor/three/` から遅延読み込み)。人物モデルは `assets/people/*.glb`(1人約1.5MB、場面ごとに必要な人だけ読む)。
+- 読み込めない環境(WebGLなし、`file://` で開いた、claude.ai 上など)や「視差効果を減らす」設定では、カットシーンを飛ばしてゲームだけが進む。
+- 人物は架空。素材は MakeHuman/MPFB2 の CC0 アセットで、`tools/human/` のスクリプトで作る(作り方は `tools/human/README.md`)。
+- `window.__noCine = true` にするとカットシーンを全部飛ばす(自動プレイ・テスト用)。
 
 ## 公開(Firebase Hosting / `○○.web.app`)
 公開URLは `https://<FirebaseのプロジェクトID>.web.app/`。いまの設定は `sotsuron-girigiri`。
