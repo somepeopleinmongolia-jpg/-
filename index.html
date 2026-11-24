@@ -189,6 +189,29 @@ details.box textarea{width:100%;height:150px;margin-top:8px;font:inherit;font-si
 .note{font-size:12.5px;color:var(--muted);line-height:1.5}
 .th-msg{font-size:13px;font-weight:700;color:var(--pen)}
 
+/* lab gacha */
+.gacha{padding-top:20px;display:flex;flex-direction:column;gap:14px}
+.g-title{font-family:var(--f-display);font-weight:400;font-size:clamp(34px,10vw,44px);line-height:1.1;background:linear-gradient(transparent 62%,var(--marker) 62%);align-self:flex-start;padding-right:6px}
+.g-stage{min-height:200px;display:grid;place-items:center}
+.capsule{width:132px;height:132px;border-radius:50%;border:3px solid var(--ink);background:linear-gradient(var(--pen) 50%,var(--card) 50%);box-shadow:5px 5px 0 var(--ink);display:grid;place-items:center;position:relative}
+.capsule::after{content:"";position:absolute;left:-3px;right:-3px;top:calc(50% - 2px);height:4px;background:var(--ink)}
+.capsule span{position:relative;z-index:1;width:54px;height:54px;border-radius:50%;background:var(--card);border:3px solid var(--ink);display:grid;place-items:center;font-family:var(--f-display);font-size:28px}
+.capsule.spin{animation:wobble .95s ease-in-out}
+@keyframes wobble{0%,100%{transform:rotate(0)}15%{transform:rotate(-18deg)}30%{transform:rotate(16deg)}45%{transform:rotate(-12deg) scale(1.04)}60%{transform:rotate(10deg) scale(1.08)}80%{transform:rotate(-4deg) scale(1.12)}}
+.g-odds{font-size:12px;font-weight:700;color:var(--muted);text-align:center}
+.labcard{width:100%;position:relative}
+.lab-head{display:flex;justify-content:space-between;align-items:center}
+.rar{font-family:var(--f-display);font-size:20px;line-height:1;padding:4px 10px;border:2.5px solid var(--ink);border-radius:8px;background:var(--card)}
+.rar-SSR .rar{background:var(--pen);color:#fff}
+.rar-SR .rar{background:var(--marker)}
+.card.rar-SSR{box-shadow:5px 5px 0 var(--pen)}
+.lab-em{font-size:40px;line-height:1}
+.lab-prof{font-size:14px;font-weight:900}
+.lab-fx{margin:0;padding-left:1.2em;font-size:14px;font-weight:700;display:flex;flex-direction:column;gap:2px}
+.stats .star{color:var(--pen);letter-spacing:.04em}
+.stats div.wide{grid-column:1 / -1}
+.labchip{flex:none;font-size:11px;font-weight:900;border:2px solid var(--ink);border-radius:6px;padding:0 6px;background:var(--marker);max-width:46%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
 /* collection */
 .coll{display:flex;flex-direction:column;gap:8px}
 .coll h3{font-family:var(--f-display);font-weight:400;font-size:20px}
@@ -200,7 +223,7 @@ details.box textarea{width:100%;height:150px;margin-top:8px;font:inherit;font-si
 .coll .cd{font-size:13px;color:var(--muted);line-height:1.45}
 
 @media (prefers-reduced-motion:reduce){
-  .enter,.stamp,.pop,body.low .count b{animation:none}
+  .enter,.stamp,.pop,body.low .count b,.capsule.spin{animation:none}
   .btn,.m em i{transition:none}
 }
 </style>
@@ -275,10 +298,13 @@ var ACT_RUN={
       fx:{q:4,s:-10}};
   },
   ask:function(){
-    if(chance(0.6)){
+    if(chance(L.absent)){
+      return {t:pick(['教授室は空だった。ドアに「出張中」の札。','メールしたら「来週戻ります」とだけ返ってきた。']),fx:{s:-2}};
+    }
+    if(chance(L.ask)){
       return {t:pick(['「方向性いいと思うよ」と言われた。胃がゆるんだ。','「この図、わかりやすいね」だけで3日は戦える。']),fx:{t:rand(10,14),q:4,s:-2}};
     }
-    return {t:pick(['「で、結論は?」の一言で背筋が伸びた。','「構成を見直したほうがいい」。的確すぎて反論できない。']),fx:{t:3,q:8,s:-10}};
+    return {t:pick(['「で、結論は?」の一言で背筋が伸びた。','「構成を見直したほうがいい」。的確すぎて反論できない。']),fx:{t:3,q:Math.round(8*L.askQ),s:-10}};
   },
   sleep:function(){
     return {t:pick(['9時間寝た。脳が静かに回復している。','布団が優しい。卒論の存在を一瞬忘れた。','夢の中でも参考文献を整えていた。']),fx:{s:rand(24,30)}};
@@ -312,7 +338,7 @@ var EVENTS=[
     }}]},
   {id:'ai',em:'🤖',tag:'誘惑',title:'AIが目の前でスタンバイしている',body:'「卒論、手伝おうか?」カーソルが点滅している。',choices:[
     {label:'全部書かせる',run:function(){
-      if(chance(0.5))return {t:'文体が急に変わったのを教授に見抜かれた。',fx:{c:3000,q:-12,t:-25,sus:1}};
+      if(chance(L.detect))return {t:'文体が急に変わったのを教授に見抜かれた。',fx:{c:3000,q:-12,t:-25,sus:1}};
       return {t:'3000字が一瞬で貼れた。誰にも気づかれなかった(と思う)。',fx:{c:3000,q:-12}};
     }},
     {label:'誤字チェックだけ頼む',run:function(){return {t:'誤字と「てにをは」を直してもらった。読みやすい。',fx:{q:8,s:4}}}},
@@ -327,7 +353,7 @@ var EVENTS=[
     {label:'焦って書く',run:function(){return {t:'焦りは文字数に変わる。内容はあとで考える。',fx:{c:900,s:-14,q:-4}}}},
     {label:'通知を切る',run:function(){return {t:'LINEをミュートした。心が少し軽い。',fx:{s:6}}}},
     {label:'先輩の卒論を参考にする',run:function(){
-      if(chance(0.6))return {t:'構成の勉強になった。ありがたい。',fx:{q:10,c:300}};
+      if(chance(1-L.detect*0.8))return {t:'構成の勉強になった。ありがたい。',fx:{q:10,c:300}};
       return {t:'参考にしたつもりが、似すぎていた。',fx:{c:1200,t:-15,sus:1}};
     }}]},
   {id:'zemi',em:'🎤',tag:'ゼミ',title:'ゼミ発表が明日だった',body:'カレンダーを見て、血の気が引いた。',choices:[
@@ -382,6 +408,50 @@ var ENDINGS=[
 ];
 var END_BY_ID={};ENDINGS.forEach(function(e){END_BY_ID[e.id]=e});
 
+/* ---------- ラボ配属ガチャ ----------
+   最初に研究室を引き、先生の厳しさと研究室の空気を決める。研究室・先生はすべて架空 */
+var LAB_BASE={san:70,trust:40,q:10,tg:1,qg:1,ask:0.6,askQ:1,absent:0,detect:0.5,susT:40,mercy:65,exTrust:65,wm:1,wc:0,night:0};
+var LABS=[
+  {id:'hotoke',rar:'SSR',w:6,em:'🪷',name:'仏の研究室',prof:'何を出しても「いいね」と言う先生',strict:1,
+    desc:'相談すればだいたい褒めてもらえる。締切だけは延びない。',
+    fx:['相談の成功率が高い(85%)','信頼が上がりやすい','温情のハードルが低い'],
+    ack:'どんな原稿にも「いいね」と言ってくださった指導教員に深く感謝する。',
+    m:{san:80,trust:55,tg:1.3,ask:0.85,mercy:50,susT:30}},
+  {id:'oni',rar:'SR',w:12,em:'🖍️',name:'鬼の赤ペン研',prof:'原稿が真っ赤になって返ってくる先生',strict:5,
+    desc:'褒められることはまずない。ただ、相談するたびに確実に良くなる。',
+    fx:['相談の成功率が低い(40%)','相談で研究の質が大きく上がる','信頼が上がりにくい・初期信頼30','不正はすぐ見抜かれる','温情はほぼ期待できない'],
+    ack:'毎回の原稿を真っ赤にして返してくださった指導教員に感謝する。',
+    m:{trust:30,tg:0.7,qg:1.1,ask:0.4,askQ:1.6,detect:0.8,susT:60,mercy:80,exTrust:60}},
+  {id:'taiiku',rar:'SR',w:10,em:'💪',name:'体育会系研',prof:'「気合いで書け」が口ぐせの先生',strict:4,
+    desc:'書く量は増えるが、消耗も激しい。',
+    fx:['書ける字数が1.2倍','書くたびに正気度が余分に減る'],
+    ack:'「気合いで書け」と励まし続けてくださった指導教員に感謝する。',
+    m:{san:75,wm:1.2,wc:3}},
+  {id:'core',rar:'R',w:16,em:'⏰',name:'コアタイム厳守研',prof:'朝9時に必ず点呼をとる先生',strict:4,
+    desc:'毎日決まった時間に研究室へ。研究は進むが、夜ごとに少し削れる。',
+    fx:['研究の質が上がりやすい・初期の質18','毎晩、正気度が4減る','温情のハードルが高め'],
+    ack:'毎朝の点呼で生活を整えてくださった指導教員に感謝する。',
+    m:{q:18,qg:1.15,night:-4,mercy:70}},
+  {id:'absent',rar:'R',w:14,em:'✈️',name:'ほぼ不在研',prof:'いつも出張中の先生',strict:2,
+    desc:'相談しようにも、教授室はだいたい空。見られていない分、ごまかしは効きやすい。',
+    fx:['相談の40%は不在で空振り','不正は見抜かれにくい','初期信頼50'],
+    ack:'出張先からメールでご指導いただいた指導教員に感謝する。',
+    m:{trust:50,absent:0.4,detect:0.3,susT:25,mercy:60}},
+  {id:'yuru',rar:'N',w:20,em:'🌿',name:'ゆるふわ放任研',prof:'「好きにやっていいよ」の先生',strict:1,
+    desc:'口出しはほぼない。その分、研究の質は自分で上げるしかない。',
+    fx:['初期正気度85・初期信頼50','研究の質が上がりにくい','温情のハードルが低め'],
+    m:{san:85,trust:50,qg:0.85,mercy:55,susT:30}},
+  {id:'normal',rar:'N',w:22,em:'🏫',name:'ふつうの研究室',prof:'週1でゼミをする先生',strict:3,
+    desc:'可もなく不可もなく。いちばん標準的な難しさ。',
+    fx:['特別なことは何もない'],
+    m:{}}
+];
+var LAB_BY_ID={};LABS.forEach(function(l){LAB_BY_ID[l.id]=l});
+var L=null; /* いまの研究室(LAB_BASEと合成済み) */
+function labOf(id){var l=LAB_BY_ID[id]||LAB_BY_ID.normal;var o=Object.assign({},LAB_BASE,l.m);o.lab=l;return o}
+function rollLab(){var t=0;LABS.forEach(function(l){t+=l.w});var r=Math.random()*t;for(var i=0;i<LABS.length;i++){r-=LABS[i].w;if(r<0)return LABS[i]}return LABS[LABS.length-1]}
+function stars(n){return '★★★★★'.slice(0,n)+'☆☆☆☆☆'.slice(0,5-n)}
+
 /* 公開URL。claude.ai上やローカルファイルで開いたときは公開先のURLを使う */
 var CANON_URL='https://somepeopleinmongolia-jpg.github.io/-/';
 function shareURL(){
@@ -394,13 +464,19 @@ function shareURL(){
 /* ---------- state ---------- */
 var S=null, hist=[], root=null, themeText='';
 
-function newGame(theme){
-  S={day:1,ap:AP_PER_DAY,chars:0,san:70,trust:40,q:10,sus:0,boost:false,dayLog:[],theme:theme||'',queue:shuffle(EVENTS).slice(0,DAYS-1)};
+function newGame(theme,labId){
+  L=labOf(labId);
+  S={day:1,ap:AP_PER_DAY,chars:0,san:L.san,trust:L.trust,q:L.q,sus:0,boost:false,down:false,lab:L.lab.id,dayLog:[],theme:theme||'',queue:shuffle(EVENTS).slice(0,DAYS-1)};
   hist=[];
 }
 
 function apply(fx,em){
   var chips=[];
+  if(L&&((fx.t>0&&L.tg!==1)||(fx.q>0&&L.qg!==1))){
+    fx=Object.assign({},fx);
+    if(fx.t>0)fx.t=Math.max(1,Math.round(fx.t*L.tg));
+    if(fx.q>0)fx.q=Math.max(1,Math.round(fx.q*L.qg));
+  }
   function stat(key,name,prop){
     if(!fx[key])return;
     var b=S[prop];S[prop]=clamp(S[prop]+fx[key],0,100);
@@ -454,13 +530,61 @@ function renderTitle(){
   $('#start').onclick=function(){
     themeText=$('#theme').value.trim();
     blip(520,0.08,'square',0.04);
-    startGame();
+    renderGacha();
   };
+}
+
+function labCardHTML(l){
+  var o=labOf(l.id);
+  return '<div class="card labcard rar-'+l.rar+' enter">'+
+    '<div class="lab-head"><span class="rar">'+l.rar+'</span><span class="lab-em" aria-hidden="true">'+l.em+'</span></div>'+
+    '<h3 class="ev-title">'+esc(l.name)+'</h3>'+
+    '<p class="lab-prof">指導教員:'+esc(l.prof)+'</p>'+
+    '<p class="ev-body">'+esc(l.desc)+'</p>'+
+    '<dl class="stats" style="margin:0">'+
+      '<div class="wide"><dt>先生の厳しさ</dt><dd class="star">'+stars(l.strict)+'</dd></div>'+
+      '<div><dt>正気度</dt><dd>'+o.san+'</dd></div>'+
+      '<div><dt>教授の信頼</dt><dd>'+o.trust+'</dd></div>'+
+      '<div><dt>研究の質</dt><dd>'+o.q+'</dd></div>'+
+    '</dl>'+
+    '<ul class="lab-fx">'+l.fx.map(function(x){return '<li>'+esc(x)+'</li>'}).join('')+'</ul>'+
+  '</div>';
+}
+
+function renderGacha(){
+  var rerolls=1, cur=null;
+  setRoot(
+    '<main class="gacha">'+
+      '<span class="tag">配属前夜</span>'+
+      '<h2 class="g-title">ラボ配属ガチャ</h2>'+
+      '<p class="ev-body">どの研究室に入るかで、先生の厳しさも卒論の難しさも変わる。運命の1回。</p>'+
+      '<div class="g-stage" id="gst"><div class="capsule" aria-hidden="true"><span>?</span></div></div>'+
+      '<p class="g-odds">SSR 6% ・ SR 22% ・ R 30% ・ N 42%</p>'+
+      '<div class="stack" id="gbtns"><button class="btn primary" id="roll" type="button">ガチャを回す</button></div>'+
+    '</main>'
+  );
+  function roll(){
+    var bs=$('#gbtns');bs.innerHTML='';
+    var cap=el('div','capsule spin');cap.innerHTML='<span>?</span>';cap.setAttribute('aria-hidden','true');
+    var st=$('#gst');st.innerHTML='';st.appendChild(cap);
+    blip(300,0.08,'square',0.03);
+    cur=rollLab();
+    setTimeout(function(){
+      var good=cur.rar==='SSR'||cur.rar==='SR';
+      jingle(good);if(cur.rar==='SSR')buzz(120);
+      st.innerHTML=labCardHTML(cur);
+      bs.innerHTML='<button class="btn primary" id="labgo" type="button">この研究室で書きはじめる</button>'+
+        (rerolls>0?'<button class="btn ghost" id="reroll" type="button">引き直す(残り'+rerolls+'回)</button>':'<p class="sub">引き直しはもうできない。これが運命だ。</p>');
+      $('#labgo').onclick=function(){blip(520,0.08,'square',0.04);startGame(cur.id)};
+      if($('#reroll'))$('#reroll').onclick=function(){rerolls--;roll()};
+    },950);
+  }
+  $('#roll').onclick=roll;
 }
 
 function buildHUD(){
   return '<header class="hud" id="hud">'+
-    '<div class="hud-top"><span class="fname"><i></i><span id="fname"></span></span><button class="snd" id="snd" type="button" aria-pressed="true">音 ON</button></div>'+
+    '<div class="hud-top"><span class="fname"><i></i><span id="fname"></span></span><span class="labchip">'+L.lab.em+' '+esc(L.lab.name)+'</span><button class="snd" id="snd" type="button" aria-pressed="true">音 ON</button></div>'+
     '<div class="hud-main"><div class="count"><small id="dlab">提出まで</small><b id="dleft">あと10日</b></div><div class="ap" id="ap" aria-label="今日の残り行動"></div></div>'+
     '<div class="chars"><b id="chars">0</b><span>/ '+fmt(GOAL)+'字</span></div>'+
     '<div class="segs" id="segs">'+new Array(21).join('<i></i>')+'</div>'+
@@ -502,8 +626,8 @@ function stage(node){
 
 function chipHTML(c){return '<span class="chip '+(c.v>0?'good':'bad')+'">'+esc(c.label)+'</span>'}
 
-function startGame(){
-  newGame(themeText);
+function startGame(labId){
+  newGame(themeText,labId);
   setRoot(buildHUD());
   $('#snd').onclick=function(){
     soundOn=!soundOn;this.textContent=soundOn?'音 ON':'音 OFF';this.setAttribute('aria-pressed',String(soundOn));
@@ -539,9 +663,26 @@ function showEvent(ev){
 }
 
 function nextInfo(){
-  if(S.san<=0)return {label:'視界が白くなる…',go:function(){endGame('burnout')}};
+  if(S.san<=0){
+    if(S.down)return {label:'視界が白くなる…',go:function(){endGame('burnout')}};
+    return {label:'意識が遠のく…',go:collapse};
+  }
   if(S.ap<=0)return {label:'夜になる',go:endDay};
   return {label:'つづける',go:showActions};
+}
+
+/* 正気度0の1回目は「倒れる」だけ。その日は終わり、2回目で燃え尽き */
+function collapse(){
+  S.down=true;
+  var lost=S.ap;S.ap=0;for(var i=0;i<lost;i++)S.dayLog.push('😵');
+  S.san=30;
+  var chips=apply({t:-5},'😵');
+  chips.unshift({v:1,label:'正気度 30まで回復'});
+  buzz(200);jingle(false);
+  var card=el('div','card');
+  card.innerHTML='<span class="tag">限界</span><h2 class="ev-title">😵 床で目が覚めた</h2><p class="res-text">気づいたら床で寝ていた。今日はもう動けない。<br>次に倒れたら、もう戻れない。</p><div class="chips">'+chips.map(chipHTML).join('')+'</div>';
+  var b=el('button','btn primary');b.type='button';b.textContent='夜になる';b.onclick=endDay;
+  card.appendChild(b);stage(card);
 }
 
 function showResult(text,chips){
@@ -603,7 +744,7 @@ function doWrite(){
   function tap(x,y){
     if(over)return;
     if(!started){started=true;t0=performance.now();btn.textContent='叩け!!';loop()}
-    var n=Math.round(rand(32,58)*(boost?1.5:1));
+    var n=Math.round(rand(32,58)*(boost?1.5:1)*L.wm);
     total+=n;
     var f=(crazy&&chance(0.55))?pick(CRAZY):pick(FRAGS);
     txt+=f+(chance(0.35)?'。':'');
@@ -630,7 +771,7 @@ function doWrite(){
     over=true;cancelAnimationFrame(raf);btn.disabled=true;btn.textContent='時間切れ';
     setTimeout(function(){
       S.boost=false;
-      var fx={c:total,s:total===0?-2:-(8+(boost?6:0))};
+      var fx={c:total,s:total===0?-2:-(8+(boost?6:0)+L.wc)};
       var t=total===0?'画面を見つめて終わった。0字。':
         total<700?'指が重い。1行ずつ絞り出した。':
         total<1300?'まずまずのペース。段落がひとつ増えた。':
@@ -652,20 +793,21 @@ function doWrite(){
 function endDay(){
   hist.push(S.dayLog.join('')||'💤');
   if(S.day>=DAYS)return finish(false);
+  if(L.night)S.san=clamp(S.san+L.night,1,100);
   S.day++;
   beginDay();
 }
 
 function judge(early){
   if(S.chars<1000)return 'blank';
-  if(S.sus>=1&&S.trust<40)return 'sus';
+  if(S.sus>=1&&S.trust<L.susT)return 'sus';
   if(S.chars>=GOAL){
-    if(early>=2&&S.q>=50)return 'early';
-    if(S.q>=75&&S.trust>=65)return 'excellent';
+    if(early>=2&&S.q>=65&&S.trust>=50)return 'early';
+    if(S.q>=75&&S.trust>=L.exTrust)return 'excellent';
     if(S.q>=45)return 'graduate';
     return 'charsonly';
   }
-  return (S.trust>=65&&S.chars>=GOAL*0.7)?'mercy':'repeat';
+  return (S.trust>=L.mercy&&S.chars>=GOAL*0.7)?'mercy':'repeat';
 }
 
 function finish(submitEarly){
@@ -686,7 +828,7 @@ function endGame(id,early){
   var rows=[];
   for(var i=0;i<hist.length;i+=5)rows.push(hist.slice(i,i+5).join(' '));
   var score=calcScore(id,early);
-  var text='【卒論ギリギリシミュレーター】\n'+E.em+' '+E.title+'(ランク'+E.rank+' / '+score+'点)\n『'+theme+'』\n'+fmt(S.chars)+'字 / '+fmt(GOAL)+'字 ・ '+when+'\n'+rows.join('\n')+'\n'+shareURL()+'\n#卒論ギリギリシミュ #卒論';
+  var text='【卒論ギリギリシミュレーター】\n'+E.em+' '+E.title+'(ランク'+E.rank+' / '+score+'点)\n『'+theme+'』\n配属:'+L.lab.em+L.lab.name+'('+L.lab.rar+')\n'+fmt(S.chars)+'字 / '+fmt(GOAL)+'字 ・ '+when+'\n'+rows.join('\n')+'\n'+shareURL()+'\n#卒論ギリギリシミュ #卒論';
   var enc=encodeURIComponent(text);
   setRoot(
     '<main class="result">'+
@@ -704,6 +846,7 @@ function endGame(id,early){
           '<div><dt>教授の信頼</dt><dd>'+S.trust+'</dd></div>'+
           '<div><dt>研究の質</dt><dd>'+S.q+'</dd></div>'+
           '<div><dt>疑惑</dt><dd>'+S.sus+'</dd></div>'+
+          '<div class="wide"><dt>配属</dt><dd>'+L.lab.em+' '+esc(L.lab.name)+'('+L.lab.rar+')</dd></div>'+
         '</dl>'+
         '<div class="sc-log">'+esc(rows.join('\n'))+'</div>'+
         '<div class="sc-tag">#卒論ギリギリシミュ</div>'+
@@ -824,7 +967,7 @@ function makeThesis(o){
   var C_GOOD=F(['本研究では、{how}によって{Q}を検討した。','その結果、{q2}は{claim}ことが明らかとなった。','本研究の結果は、{q2}を考える際の基礎的な資料になると考えられる。']);
   var C_MID=F(['本研究では、{Q}について{how}を行い、一定の傾向を確かめた。','今後の課題として、対象を広げた検討が挙げられる。']);
   var A_GOOD=F(['本研究では、{Q}について、{how}による検討を行った。']).concat([Rr],F(['これらの結果から、{q2}は{claim}ことが示唆された。']));
-  var ACK=o.trust>=70?'本研究を進めるにあたり、終始あたたかくご指導いただいた指導教員に深く感謝する。':o.trust<30?'本研究を進めるにあたり、ご指導いただいた(はずの)指導教員に感謝する。':'本研究を進めるにあたり、ご指導いただいた指導教員に感謝する。';
+  var ACK=o.lab&&o.lab.ack&&o.trust>=30?o.lab.ack:o.trust>=70?'本研究を進めるにあたり、終始あたたかくご指導いただいた指導教員に深く感謝する。':o.trust<30?'本研究を進めるにあたり、ご指導いただいた(はずの)指導教員に感謝する。':'本研究を進めるにあたり、ご指導いただいた指導教員に感謝する。';
 
   var d={title:tp.full,sub:'',secs:[],tail:''};
   function sec(h,p,li){d.secs.push({h:h,p:p||[],li:li||null})}
@@ -893,7 +1036,8 @@ function makeThesis(o){
     var dr=d.secs.filter(function(s){return s.h===H[3]})[0];
     if(dr)dr.p.push('(本節には、文体が不自然に整っている箇所がある)');
   }
-  d.meta=['〇〇大学 〇〇学部 4年','提出者:あなた / 指導教員:〇〇先生','ゲーム内の字数 '+fmt(o.chars)+'字 ・ '+o.title+'('+o.score+'点)'];
+  var lab=o.lab||LAB_BY_ID.normal;
+  d.meta=['〇〇大学 〇〇学部 4年 '+lab.name,'提出者:あなた / 指導教員:'+lab.prof,'ゲーム内の字数 '+fmt(o.chars)+'字 ・ '+o.title+'('+o.score+'点)'];
   return d;
 }
 
@@ -941,7 +1085,7 @@ function saveFile(name,text,say){
 
 function setupThesis(E,ctx,score,theme){
   var sec=$('#thesis');if(!sec)return;
-  var snap={theme:theme,end:E.id,title:E.title,score:score,early:ctx.early,chars:S.chars,q:S.q,trust:S.trust,san:S.san,sus:S.sus};
+  var snap={lab:L.lab,theme:theme,end:E.id,title:E.title,score:score,early:ctx.early,chars:S.chars,q:S.q,trust:S.trust,san:S.san,sus:S.sus};
   var gen=$('#gen'),paper=$('#paper'),msg=$('#thmsg'),btns=$('#paperbtns'),aiBtn=$('#ai');
   var last='',seed=(Date.now()^Math.floor(Math.random()*1e9))>>>0;
   function say(t){msg.textContent=t;msg.hidden=!t}
@@ -1015,7 +1159,7 @@ root=$('#root');
 renderTitle();
 
 /* test hook (no effect on play) */
-window.__sotsu={judge:judge,endGame:endGame,newGame:newGame,get state(){return S}};
+window.__sotsu={judge:judge,endGame:endGame,newGame:newGame,labs:LABS,get state(){return S},get lab(){return L}};
 })();
 </script>
 </body>
