@@ -51,6 +51,7 @@ CHARS = {
 }
 CHARS['professor'] = CHARS['prof_normal']
 
+GROIN = (2.2, 0.2, 62)   # 骨盤の下(dm)の範囲と、基準にする前方位置のパーセンタイル
 GROUND = [0.0]  # 足裏を z=0 に合わせるためのずらし量(位置にだけ足す)
 
 def obj2bl(p):
@@ -184,6 +185,18 @@ def main():
         groups.setdefault(gname, []).append((vi, ti))
     def gverts(name):
         return sorted({i for vi, _ in groups.get(name, []) for i in vi})
+
+    # 股間の膨らみをなくす:体そのものの前方への張り出しを、まわりの面にならす(服も肌も同じ体に沿うので穴は出ない)
+    ypel = float(V[gverts('joint-pelvis')].mean(0)[1])
+    zone = (np.abs(V[:, 0]) < 1.0) & (V[:, 1] > ypel - GROIN[0]) & (V[:, 1] < ypel - GROIN[1]) & (V[:, 2] > 0)
+    zone[13380:] = False
+    if zone.any():
+        ref = float(np.percentile(V[zone, 2], GROIN[2]))
+        wxg = np.clip(1 - (np.abs(V[:, 0]) - 0.6) / 0.4, 0, 1)
+        wyg = np.clip((V[:, 1] - (ypel - GROIN[0])) / 0.25, 0, 1) * np.clip(((ypel - GROIN[1]) - V[:, 1]) / 0.25, 0, 1)
+        wg = wxg * wyg * zone
+        print('groin zone', int(zone.sum()), 'ref', round(ref, 3), 'max z', round(float(V[zone, 2].max()), 3))
+        V[:, 2] -= np.maximum(0, V[:, 2] - ref) * wg * 0.9
 
     # 骨の位置
     rig = json.load(open(os.path.join(mp, 'rigs', 'standard', 'rig.game_engine.json')))
