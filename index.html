@@ -234,8 +234,42 @@ details.box textarea{width:100%;height:150px;margin-top:8px;font:inherit;font-si
 .coll .cn{font-weight:900;font-size:15px}
 .coll .cd{font-size:13px;color:var(--muted);line-height:1.45}
 
+/* animations */
+.hero .t1,.hero .t2,.hero .t3{animation:slideIn .5s cubic-bezier(.2,1.2,.4,1) both}
+.hero .t2{animation-delay:.12s}.hero .t3{animation-delay:.24s}
+@keyframes slideIn{from{opacity:0;transform:translateX(-28px)}to{opacity:1;transform:none}}
+.maru{animation:maruIn .5s cubic-bezier(.2,1.4,.4,1) .4s both,maruWobble 3.2s ease-in-out 1.4s infinite}
+@keyframes maruIn{from{opacity:0;transform:rotate(-20deg) scale(2.2)}to{opacity:1;transform:rotate(12deg) scale(1)}}
+@keyframes maruWobble{0%,86%,100%{transform:rotate(12deg)}90%{transform:rotate(2deg) scale(1.06)}95%{transform:rotate(18deg)}}
+.daycut{position:fixed;left:0;right:0;top:38%;z-index:20;pointer-events:none;display:flex;justify-content:center}
+.daycut div{background:var(--ink);color:var(--paper);border:3px solid var(--ink);box-shadow:6px 6px 0 var(--pen);padding:10px 22px;display:flex;align-items:baseline;gap:12px;animation:dayCut 1.15s cubic-bezier(.3,.9,.4,1) both}
+.daycut b{font-family:var(--f-display);font-weight:400;font-size:40px;line-height:1}
+.daycut span{font-weight:900;font-size:18px;color:var(--marker)}
+@keyframes dayCut{0%{opacity:0;transform:translateX(70vw) skewX(-12deg)}22%{opacity:1;transform:translateX(0) skewX(0)}74%{opacity:1;transform:translateX(0)}100%{opacity:0;transform:translateX(-70vw) skewX(12deg)}}
+.chip{animation:chipIn .32s cubic-bezier(.2,1.5,.4,1) both}
+@keyframes chipIn{from{opacity:0;transform:scale(.4)}to{opacity:1;transform:none}}
+.chars b.bump{animation:bump .35s ease-out}
+@keyframes bump{40%{transform:scale(1.18);color:var(--pen)}}
+.labcard.flip{animation:flipIn .55s cubic-bezier(.2,1.2,.4,1) both}
+@keyframes flipIn{from{opacity:0;transform:perspective(700px) rotateY(85deg) scale(.9)}to{opacity:1;transform:none}}
+.g-stage{position:relative}
+.flash{position:absolute;inset:-20px;border-radius:24px;pointer-events:none;animation:flash .8s ease-out forwards}
+.flash.SR{background:radial-gradient(circle,var(--marker) 0,transparent 70%)}
+.flash.SSR{background:radial-gradient(circle,#fff 0,var(--marker) 35%,var(--pen) 60%,transparent 75%)}
+@keyframes flash{from{opacity:1;transform:scale(.6)}to{opacity:0;transform:scale(1.5)}}
+.card.rar-SSR.flip{animation:flipIn .55s cubic-bezier(.2,1.2,.4,1) both,ssrGlow 1.6s ease-in-out .6s infinite}
+@keyframes ssrGlow{0%,100%{box-shadow:5px 5px 0 var(--pen)}50%{box-shadow:5px 5px 0 var(--pen),0 0 22px 4px var(--marker)}}
+body.faint::after{content:"";position:fixed;inset:0;z-index:30;pointer-events:none;background:#fff;animation:faint .9s ease-out forwards}
+@keyframes faint{0%{opacity:0}25%{opacity:1}100%{opacity:0}}
+body.faint #stage{animation:shake .4s 2}
+.paper.reveal>*{animation:rise .35s ease-out both}
+.confetti{position:fixed;inset:0;z-index:25;pointer-events:none;overflow:hidden}
+.confetti i{position:absolute;top:-20px;width:9px;height:14px;border:1.5px solid var(--ink);animation:fall linear forwards}
+@keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
+
 @media (prefers-reduced-motion:reduce){
-  .enter,.stamp,.pop,body.low .count b,.capsule.spin{animation:none}
+  .enter,.stamp,.pop,body.low .count b,.capsule.spin,.hero .t1,.hero .t2,.hero .t3,.maru,.daycut div,.chip,.chars b.bump,.labcard.flip,.card.rar-SSR.flip,.flash,body.faint::after,body.faint #stage,.paper.reveal>*{animation:none}
+  .daycut,.confetti{display:none}
   .btn,.m em i{transition:none}
 }
 </style>
@@ -607,7 +641,8 @@ function renderGacha(){
     setTimeout(function(){
       var good=cur.rar==='SSR'||cur.rar==='SR';
       jingle(good);if(cur.rar==='SSR')buzz(120);
-      st.innerHTML=labCardHTML(cur,sur);
+      st.innerHTML=labCardHTML(cur,sur).replace('labcard ','labcard flip ');
+      if(good){var fl=el('div','flash '+cur.rar);st.appendChild(fl);setTimeout(function(){if(fl.parentNode)fl.parentNode.removeChild(fl)},900)}
       bs.innerHTML='<button class="btn primary" id="labgo" type="button">この研究室で書きはじめる</button>'+
         (rerolls>0?'<button class="btn ghost" id="reroll" type="button">引き直す(残り'+rerolls+'回)</button>':'<p class="sub">引き直しはもうできない。これが運命だ。</p>');
       $('#labgo').onclick=function(){blip(520,0.08,'square',0.04);startGame(cur.id,sur)};
@@ -630,13 +665,26 @@ function buildHUD(){
     '</div></header><div id="stage"></div>';
 }
 
+function countTo(node,to){
+  var from=+(node.dataset.v||0);node.dataset.v=to;
+  if(from===to){node.textContent=fmt(to);return}
+  node.classList.remove('bump');void node.offsetWidth;node.classList.add('bump');
+  var t0=performance.now(),dur=450;
+  (function step(){
+    var p=Math.min(1,(performance.now()-t0)/dur),e=1-Math.pow(1-p,3);
+    if(node.dataset.v!=String(to))return;
+    node.textContent=fmt(from+(to-from)*e);
+    if(p<1)requestAnimationFrame(step);
+  })();
+}
+
 function updateHUD(){
   if(!$('#hud'))return;
   var left=DAYS-S.day+1;
   $('#dleft').textContent=S.day>=DAYS?'今夜〆切':'あと'+left+'日';
   $('#dlab').textContent=S.day>=DAYS?'最終日':'提出まで';
   $('#fname').textContent=FNAMES[Math.min(S.day-1,FNAMES.length-1)];
-  $('#chars').textContent=fmt(S.chars);
+  countTo($('#chars'),S.chars);
   var n=Math.min(20,Math.floor(S.chars/(GOAL/20)));
   var segs=document.querySelectorAll('#segs i');
   for(var i=0;i<segs.length;i++)segs[i].className=i<n?'on':'';
@@ -659,7 +707,7 @@ function stage(node){
   window.scrollTo(0,0);
 }
 
-function chipHTML(c){return '<span class="chip '+(c.v>0?'good':'bad')+'">'+esc(c.label)+'</span>'}
+function chipHTML(c,i){return '<span class="chip '+(c.v>0?'good':'bad')+'" style="animation-delay:'+((i||0)*90+120)+'ms">'+esc(c.label)+'</span>'}
 
 function startGame(labId,sur){
   newGame(themeText,labId,sur);
@@ -671,7 +719,17 @@ function startGame(labId,sur){
   beginDay();
 }
 
+function dayCut(){
+  var old=$('.daycut');if(old)old.parentNode.removeChild(old);
+  var left=DAYS-S.day+1;
+  var d=el('div','daycut');d.setAttribute('aria-hidden','true');
+  d.innerHTML='<div><b>DAY '+S.day+'</b><span>'+(S.day>=DAYS?'最終日':'あと'+left+'日')+'</span></div>';
+  document.body.appendChild(d);
+  setTimeout(function(){if(d.parentNode)d.parentNode.removeChild(d)},1300);
+}
+
 function beginDay(){
+  dayCut();
   S.ap=AP_PER_DAY;S.dayLog=[];
   updateHUD();
   var ev=S.day>=DAYS?FINAL_EV:S.queue[S.day-1];
@@ -709,6 +767,8 @@ function nextInfo(){
 /* 正気度0の1回目は「倒れる」だけ。その日は終わり、2回目で燃え尽き */
 function collapse(){
   S.down=true;mark('down');
+  document.body.classList.remove('faint');void document.body.offsetWidth;document.body.classList.add('faint');
+  setTimeout(function(){document.body.classList.remove('faint')},1000);
   var lost=S.ap;S.ap=0;for(var i=0;i<lost;i++)S.dayLog.push('😵');
   S.san=30;
   var chips=apply({t:-5},'😵');
@@ -918,6 +978,22 @@ function endGame(id,early){
   $('#again').onclick=function(){renderTitle()};
   setupThesis(E,ctx,score,theme);
   jingle(!!E.good);
+  if(E.good)confetti(id==='early'||id==='excellent'?60:32);
+}
+
+function confetti(n){
+  var box=el('div','confetti');box.setAttribute('aria-hidden','true');
+  var cols=['var(--marker)','var(--pen)','var(--card)','#9be08a'];
+  for(var i=0;i<n;i++){
+    var c=el('i');
+    c.style.left=rand(0,100)+'%';c.style.background=pick(cols);
+    c.style.animationDuration=(1.8+Math.random()*1.6).toFixed(2)+'s';
+    c.style.animationDelay=(Math.random()*0.6).toFixed(2)+'s';
+    c.style.transform='rotate('+rand(0,180)+'deg)';
+    box.appendChild(c);
+  }
+  document.body.appendChild(box);
+  setTimeout(function(){if(box.parentNode)box.parentNode.removeChild(box)},4200);
 }
 
 function calcScore(id,early){
@@ -1206,6 +1282,8 @@ function setupThesis(E,ctx,score,theme){
     var d=makeThesis(Object.assign({seed:seed},snap));
     last=thesisText(d);
     paper.classList.remove('raw');paper.innerHTML=thesisHTML(d);paper.hidden=false;paper.scrollTop=0;btns.hidden=false;
+    paper.classList.add('reveal');
+    Array.prototype.forEach.call(paper.children,function(c,i){c.style.animationDelay=Math.min(i*70,1400)+'ms'});
   }
   gen.onclick=function(){
     gen.disabled=true;gen.textContent='執筆中…';say('');

@@ -1,9 +1,11 @@
-# main(またはこの作業ブランチ)にpushすると Firebase Hosting に公開する。
-# リポジトリの Secrets に FIREBASE_SERVICE_ACCOUNT(サービスアカウントのJSON)を登録するまでは、何もせずに終わる。
+# Firebase Hosting への公開。
+# - main へのpush            → 本番(https://sotsuron-girigiri.web.app/)
+# - それ以外のブランチへのpush → 確認用の一時URL(previewチャンネル。30日で消える。本番は変わらない)
+# リポジトリの Secrets に FIREBASE_SERVICE_ACCOUNT を登録するまでは、何もせずに終わる。
 name: Deploy to Firebase Hosting
 on:
   push:
-    branches: [main, claude/thesis-generator-fd4u9r]
+    branches: ['**']
   workflow_dispatch:
 jobs:
   deploy:
@@ -16,10 +18,26 @@ jobs:
           if [ -n "$SA" ]; then echo "ok=true" >> "$GITHUB_OUTPUT"; else echo "FIREBASE_SERVICE_ACCOUNT が未登録なので公開をスキップします"; fi
       - if: steps.check.outputs.ok == 'true'
         uses: actions/checkout@v4
-      - if: steps.check.outputs.ok == 'true'
+      - name: 本番に公開(main)
+        if: steps.check.outputs.ok == 'true' && github.ref == 'refs/heads/main'
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           projectId: sotsuron-girigiri
           channelId: live
+      - name: 確認用URLに公開(main以外)
+        id: preview
+        if: steps.check.outputs.ok == 'true' && github.ref != 'refs/heads/main'
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          projectId: sotsuron-girigiri
+          channelId: preview
+          expires: 30d
+      - name: 確認用URLを表示
+        if: steps.preview.outputs.details_url != ''
+        run: |
+          echo "確認用URL: ${{ steps.preview.outputs.details_url }}"
+          echo "### 確認用URL: ${{ steps.preview.outputs.details_url }}" >> "$GITHUB_STEP_SUMMARY"

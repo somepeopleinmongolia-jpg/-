@@ -29,7 +29,10 @@ npx firebase-tools deploy --only hosting
 ### GitHubにpushしたら自動で公開する場合
 1. Firebaseコンソール → プロジェクトの設定 → サービスアカウント → 「新しい秘密鍵を生成」でJSONをダウンロード。
 2. GitHubのリポジトリ → Settings → Secrets and variables → Actions に `FIREBASE_SERVICE_ACCOUNT` という名前でJSONの中身を登録。
-3. 以後、`main` か作業ブランチにpushすると `.github/workflows/firebase-hosting.yml` が公開する。
+3. 以後、pushすると `.github/workflows/firebase-hosting.yml` が公開する。
+   - 作業ブランチへのpush → 確認用の一時URL(`sotsuron-girigiri--preview-xxxx.web.app`、30日で消える)。URLはActionsの実行結果の「Summary」に出る。本番は変わらない。
+   - `main` へのpush(またはマージ) → 本番 `https://sotsuron-girigiri.web.app/`。
+   - 本番で問題が出たら、Firebaseコンソールの Hosting → リリース履歴 から前の版に戻せる。
 
 (`npx firebase-tools init hosting:github` を使うと、1と2を自動でやってくれる。その場合、既存の `firebase.json` は上書きしないこと。)
 

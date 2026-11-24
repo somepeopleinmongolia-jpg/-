@@ -19,7 +19,7 @@ if(m){
   const rc=path.join(root,'.firebaserc');
   fs.writeFileSync(rc,JSON.stringify({projects:{default:id}},null,2)+'\n');
   const wf=path.join(root,'.github/workflows/firebase-hosting.yml');
-  fs.writeFileSync(wf,fs.readFileSync(wf,'utf8').replace(/projectId: .*/,'projectId: '+id));
+  fs.writeFileSync(wf,fs.readFileSync(wf,'utf8').split(old).join(url).replace(/projectId: .*/g,'projectId: '+id));
   console.log('Firebase プロジェクトID: '+id);
 }
 console.log(old+' → '+url);
