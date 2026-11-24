@@ -25,21 +25,23 @@ def C(**k):
 
 # 登場人物(すべて架空)。age: 0.5=25歳, 0.75≒57歳, 1.0=90歳
 CHARS = {
-    'prof_normal': C(age=0.74, muscle=0.42, weight=0.62, height=0.45, hair_gray=0.12, top=(0.36, 0.33, 0.30)),
+    'prof_normal': C(age=0.74, muscle=0.42, weight=0.62, height=0.45, hair_gray=0.12, top=(0.93, 0.93, 0.91),
+                     outer=(0.18, 0.19, 0.22), outer_kind='suit', tie=(0.12, 0.17, 0.36), pants=(0.17, 0.18, 0.21)),
     'prof_hotoke': C(age=0.84, muscle=0.35, weight=0.8, height=0.4, hair_gray=0.75, skin=(0.84, 0.66, 0.53),
-                     top=(0.74, 0.63, 0.47), pants=(0.36, 0.28, 0.22)),
+                     top=(0.95, 0.93, 0.88), outer=(0.70, 0.60, 0.44), outer_kind='suit', tie=(0.46, 0.14, 0.16), pants=(0.40, 0.32, 0.25)),
     'prof_oni': C(age=0.66, muscle=0.5, weight=0.3, height=0.62, hair_gray=0.05, brow=0.85,
-                  top=(0.11, 0.12, 0.16), pants=(0.11, 0.12, 0.16), shoes=(0.05, 0.05, 0.05)),
+                  top=(0.96, 0.96, 0.95), outer=(0.07, 0.07, 0.09), outer_kind='suit', tie=(0.45, 0.06, 0.08),
+                  pants=(0.07, 0.07, 0.09), shoes=(0.04, 0.04, 0.04)),
     'prof_taiiku': C(age=0.62, muscle=0.95, weight=0.55, height=0.58, hair_style='buzz', skin=(0.74, 0.54, 0.40),
                      top=(0.62, 0.12, 0.13), pants=(0.10, 0.12, 0.26), shoes=(0.90, 0.90, 0.88)),
     'prof_core': C(gender=0.0, age=0.7, muscle=0.45, weight=0.42, height=0.5, hair_style='bob', hair_gray=0.2,
-                   top=(0.86, 0.87, 0.88), outer=(0.33, 0.35, 0.40), outer_kind='open', pants=(0.20, 0.21, 0.24), brow=0.45),
+                   top=(0.94, 0.94, 0.95), outer=(0.28, 0.30, 0.36), outer_kind='suit', pants=(0.22, 0.24, 0.30), brow=0.45),
     'prof_absent': C(age=0.72, muscle=0.45, weight=0.5, height=0.55, hair_gray=0.4,
                      top=(0.55, 0.44, 0.30), pants=(0.62, 0.56, 0.44)),
     'prof_yuru': C(age=0.58, muscle=0.45, weight=0.5, height=0.52, top=(0.40, 0.44, 0.31),
                    pants=(0.20, 0.27, 0.42), shoes=(0.88, 0.88, 0.86)),
     'clerk': C(gender=0.0, age=0.6, muscle=0.45, weight=0.45, height=0.42, hair_style='bob', skin=(0.86, 0.68, 0.56),
-               top=(0.94, 0.94, 0.93), outer=(0.15, 0.19, 0.30), outer_kind='open', pants=(0.17, 0.20, 0.28), shoes=(0.08, 0.07, 0.07), brow=0.45),
+               top=(0.70, 0.78, 0.90), outer=(0.12, 0.16, 0.28), outer_kind='suit', pants=(0.12, 0.16, 0.28), shoes=(0.06, 0.05, 0.05), brow=0.45),
     'friend': C(age=0.52, muscle=0.55, weight=0.5, height=0.56, top=(0.52, 0.54, 0.50),
                 pants=(0.18, 0.24, 0.36), shoes=(0.86, 0.86, 0.84), brow=0.6),
     'lover': C(gender=0.0, age=0.51, muscle=0.45, weight=0.42, height=0.45, hair_style='bob', skin=(0.87, 0.69, 0.57),
@@ -344,8 +346,26 @@ def main():
 
     # ---------------- 服・髪の殻
     Nrm = vertex_normals(P, [vi for vi, _, _ in body_faces])
-    def shell(name, face_list, push, rgb, rough=0.8, smooth=2, src_positions=None, taper=0, pmul=None, drape=False):
-        pos = (src_positions if src_positions is not None else P)
+    def shell(name, face_list, push, rgb, rough=0.8, smooth=2, src_positions=None, taper=0, pmul=None, drape=False, hem=None):
+        pos = (src_positions if src_positions is not None else P).copy()
+        if drape:
+            # 胸の一番前の点から下は、布がまっすぐ垂れる(谷間やアンダーバストに沿わない)。左右の端へは徐々に弱める
+            used = sorted({i for vi, _, _ in face_list for i in vi})
+            chest = [i for i in used if dom[i] == 'spine_03' and abs(pos[i, 0]) < 0.2]
+            ap = min(chest, key=lambda i: pos[i, 1])
+            az = pos[ap, 2]
+            # 基準の面:胸まわりの中央値(いちばん前の点ではなく)。張り出しはここまで押し戻される
+            band = [pos[i, 1] for i in chest if abs(pos[i, 0]) < 0.12 and az - 0.16 < pos[i, 2] < az + 0.05]
+            ay = float(np.median(band)) if band else pos[ap, 1]
+            for i in used:
+                x, y, z = pos[i]
+                if dom[i] not in ('spine_01', 'spine_02', 'spine_03', 'pelvis') or y >= 0:
+                    continue
+                wx = min(1.0, max(0.0, 1 - (abs(x) - (0.14 if drape is True else 0.20)) / 0.10))
+                span = 0.21 if drape is True else 0.62
+                wz = min(1.0, max(0.0, (z - (az - span)) / 0.07)) * min(1.0, max(0.0, (az + 0.10 - z) / 0.05))
+                front = ay + max(0.0, az - z) * 0.10
+                pos[i, 1] = y + (front - y) * wx * wz * 0.92
         Nl = vertex_normals(pos, [vi for vi, _, _ in face_list])
         pw = np.full(len(pos), 1.0)
         if taper:
@@ -376,23 +396,6 @@ def main():
                 e = (min(a, b), max(a, b)); edge_count[e] = edge_count.get(e, 0) + 1
         border = {i for e, k in edge_count.items() if k == 1 for i in e}
         idx = [i for i in nb if i not in border]
-        if drape:
-            # 胸の一番前の点から下は、布がまっすぐ垂れる(谷間やアンダーバストに沿わない)。左右の端へは徐々に弱める
-            used = sorted({i for vi, _, _ in face_list for i in vi})
-            chest = [i for i in used if dom[i] == 'spine_03' and abs(newpos[i, 0]) < 0.2]
-            ap = min(chest, key=lambda i: newpos[i, 1])
-            az = newpos[ap, 2]
-            # 基準の面:胸まわりの中央値(いちばん前の点ではなく)。張り出しはここまで押し戻される
-            band = [newpos[i, 1] for i in chest if abs(newpos[i, 0]) < 0.12 and az - 0.16 < newpos[i, 2] < az + 0.05]
-            ay = float(np.median(band)) if band else newpos[ap, 1]
-            for i in used:
-                x, y, z = newpos[i]
-                if dom[i] not in ('spine_01', 'spine_02', 'spine_03', 'pelvis') or y >= 0:
-                    continue
-                wx = min(1.0, max(0.0, 1 - (abs(x) - 0.14) / 0.10))
-                wz = min(1.0, max(0.0, (z - (az - 0.21)) / 0.07)) * min(1.0, max(0.0, (az + 0.10 - z) / 0.05))
-                front = ay + max(0.0, az - z) * 0.10
-                newpos[i, 1] = y + (front - y) * wx * wz * 0.92
         # Taubin 平滑化(縮まずに細かい凹凸だけ消す)
         nbl = [list(nb[i]) for i in idx]
         for it in range(smooth * 2 if idx else 0):
@@ -405,6 +408,13 @@ def main():
         for _ in range(smooth if bl else 0):
             avg = np.array([newpos[bn[i]].mean(0) for i in bl])
             newpos[bl] = newpos[bl] * 0.5 + avg * 0.5
+        if hem is not None:
+            # 裾の縁をまっすぐに:縁の頂点のうち裾の高さ付近のものを、同じ高さにそろえる
+            low = [i for i in border if newpos[i, 2] < hem + 0.07]
+            if low:
+                zz = float(np.mean([newpos[i, 2] for i in low]))
+                for i in low:
+                    newpos[i, 2] = zz
         return build_mesh(name, face_list, newpos, {name: make_mat(name, rgb, rough)})
 
     body_only = [(vi, ti) for vi, ti in groups['body']]
@@ -431,13 +441,49 @@ def main():
             return cz < neck_cut
         return cz > pz - 0.05
     top_faces = [(vi, ti) for vi, ti in body_only if top_ok(vi)]
-    shell('Top', [(vi, ti, 'Top') for vi, ti in top_faces], 0.018, c['top'], 0.9, smooth=60, drape=True)
+    shell('Top', [(vi, ti, 'Top') for vi, ti in top_faces], 0.018, c['top'], 0.9, smooth=60, drape='full' if c.get('outer_kind') == 'suit' else True)
     # 羽織りもの:前開きの上着(open)/エプロン(apron)
     ok = c.get('outer_kind')
     if ok:
         def cen(vi):
             return P[vi].mean(0)
-        if ok == 'open':
+        if ok == 'suit':
+            # 上着:腰より少し下まで。胸の前だけV字に開けて、シャツとネクタイを見せる
+            hipset = {'pelvis', 'spine_01', 'thigh_l', 'thigh_r'}
+            def jacket_ok(vi):
+                if top_ok(vi): return True
+                cz = P[vi, 2].mean()
+                return all(dom[i] in hipset for i in vi) and P[vi, 2].min() > pz - 0.13 and cz <= pz - 0.03
+            v0 = pz + 0.16
+            def in_v(vi):
+                m = cen(vi)
+                return m[1] < 0 and m[2] > v0 and abs(m[0]) < 0.008 + (m[2] - v0) * 0.30
+            jk = [(vi, ti, 'Outer') for vi, ti in body_only if jacket_ok(vi) and not in_v(vi)]
+            shell('Outer', jk, 0.036, c['outer'], 0.9, smooth=80, drape='full', hem=pz - 0.13)
+            if c.get('tie'):
+                # ネクタイ:V字の中、シャツの前に貼る細長い板(結び目+剣先)
+                tie_mat = make_mat('Tie', c['tie'], 0.55); tie_mat.use_backface_culling = False
+                z0, z1 = neck_cut - 0.015, pz + 0.10
+                rows = 9; vs, fs = [], []
+                def front_y(zz):
+                    near = [i for i in range(13380) if abs(P[i, 0]) < 0.035 and abs(P[i, 2] - zz) < 0.012 and P[i, 1] < 0]
+                    return (min(P[i, 1] for i in near) if near else -0.13) - 0.028
+                for k in range(rows):
+                    t = k / (rows - 1); zz = z0 + (z1 - z0) * t
+                    w = 0.013 if t < 0.12 else (0.026 + 0.012 * t if t < 0.9 else 0.005)
+                    yy = front_y(zz)
+                    vs += [(-w, yy, zz), (w, yy, zz)]
+                for k in range(rows - 1):
+                    a_, b_ = 2 * k, 2 * k + 1
+                    fs.append([a_, b_, b_ + 2, a_ + 2])
+                me = bpy.data.meshes.new('Tie'); me.from_pydata(vs, [], fs); me.materials.append(tie_mat); me.update()
+                for pg in me.polygons: pg.use_smooth = True
+                ob = bpy.data.objects.new('Tie', me); scn.collection.objects.link(ob)
+                g3 = ob.vertex_groups.new(name='spine_03'); g2 = ob.vertex_groups.new(name='spine_02')
+                for k, v in enumerate(vs):
+                    t = (v[2] - z1) / (z0 - z1)
+                    g3.add([k], float(t), 'REPLACE'); g2.add([k], float(1 - t), 'REPLACE')
+        elif ok == 'open':
             outer = [(vi, ti, 'Outer') for vi, ti in top_faces
                      if not (abs(cen(vi)[0]) < 0.05 and cen(vi)[1] < 0 and cen(vi)[2] < neck_cut - 0.02)]
             shell('Outer', outer, 0.032, c['outer'], 0.85, smooth=40, drape=True)
@@ -450,8 +496,9 @@ def main():
     ank = min(bones['foot_l']['head'][2], bones['foot_r']['head'][2])
     waist = bones['pelvis']['head'][2] + 0.09
     legset = {'pelvis', 'thigh_l', 'thigh_r', 'calf_l', 'calf_r', 'spine_01'}
-    pants = [(vi, ti) for vi, ti in body_only if all(dom[i] in legset for i in vi) and ank + 0.02 < P[vi, 2].mean() < pz + 0.03]
-    shell('Pants', [(vi, ti, 'Pants') for vi, ti in pants], 0.012, c['pants'], 0.85, smooth=8)
+    pants = [(vi, ti) for vi, ti in body_only if all(dom[i] in legset for i in vi) and ank + 0.02 < P[vi, 2].mean() < pz + (0.07 if c.get('outer_kind') == 'suit' else 0.03)]
+    suit = c.get('outer_kind') == 'suit'
+    shell('Pants', [(vi, ti, 'Pants') for vi, ti in pants], 0.016 if suit else 0.012, c['pants'], 0.85, smooth=30 if suit else 8)
 
     # 服の下に隠れる体の面は消す(突き抜け防止)。開口部のまわり 2 リングは残す
     def interior(fl, rings=2):
