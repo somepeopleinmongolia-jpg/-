@@ -12,13 +12,44 @@ const loader = new GLTFLoader();
 export function preload(names) {
   for (const n of names) load(n).catch(() => {});
 }
+const MODEL_EXT = '.glb';
 function load(name) {
   if (!cache.has(name)) {
-    const p = loader.loadAsync(BASE + 'assets/people/' + name + '.glb');
+    const p = fetchModel(BASE + 'assets/people/' + name + MODEL_EXT);
     p.catch(() => cache.delete(name));
     cache.set(name, p);
   }
   return cache.get(name);
+}
+
+// モデルを取ってきて、メモリ上で読み込む。
+// .glb はそのまま。.json(glTF の JSON 形式、データは base64 埋め込み)は、data: URL を使わずに
+// 自分でデコードして GLB に組み直す(data: URL の取得を禁じるページでも読めるように)
+async function fetchModel(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const buf = await res.arrayBuffer();
+  const head = new Uint8Array(buf, 0, 4);
+  if (head[0] === 0x67 && head[1] === 0x6c && head[2] === 0x54 && head[3] === 0x46) return loader.parseAsync(buf, '');
+  const json = JSON.parse(new TextDecoder().decode(buf));
+  const uri = json.buffers && json.buffers[0] && json.buffers[0].uri || '';
+  const b64 = uri.slice(uri.indexOf(',') + 1);
+  const raw = atob(b64), bin = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) bin[i] = raw.charCodeAt(i);
+  delete json.buffers[0].uri;
+  json.buffers[0].byteLength = bin.length;
+  return loader.parseAsync(toGLB(json, bin), '');
+}
+function toGLB(json, bin) {
+  const enc = new TextEncoder().encode(JSON.stringify(json));
+  const jl = Math.ceil(enc.length / 4) * 4, bl = Math.ceil(bin.length / 4) * 4;
+  const out = new ArrayBuffer(12 + 8 + jl + 8 + bl), dv = new DataView(out), u8 = new Uint8Array(out);
+  dv.setUint32(0, 0x46546c67, true); dv.setUint32(4, 2, true); dv.setUint32(8, out.byteLength, true);
+  dv.setUint32(12, jl, true); dv.setUint32(16, 0x4e4f534a, true);
+  u8.set(enc, 20); for (let i = enc.length; i < jl; i++) u8[20 + i] = 0x20;
+  dv.setUint32(20 + jl, bl, true); dv.setUint32(24 + jl, 0x004e4942, true);
+  u8.set(bin, 28 + jl);
+  return out;
 }
 
 const CSS = `
