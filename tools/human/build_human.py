@@ -51,7 +51,9 @@ CHARS = {
 }
 CHARS['professor'] = CHARS['prof_normal']
 
+CHEST = (1.6, 4.4, 30)   # 骨盤からの高さ(dm)の範囲と、基準にする前方位置のパーセンタイル(女性の胸)
 GROIN = (2.2, 0.2, 62)   # 骨盤の下(dm)の範囲と、基準にする前方位置のパーセンタイル
+DRAPE_PLANE = [None, None]   # 上着の基準面(y)と胸の頂点の高さ(z)。ネクタイの位置合わせに使う
 GROUND = [0.0]  # 足裏を z=0 に合わせるためのずらし量(位置にだけ足す)
 
 def obj2bl(p):
@@ -197,6 +199,16 @@ def main():
         wg = wxg * wyg * zone
         print('groin zone', int(zone.sum()), 'ref', round(ref, 3), 'max z', round(float(V[zone, 2].max()), 3))
         V[:, 2] -= np.maximum(0, V[:, 2] - ref) * wg * 0.9
+
+    if c['gender'] < 0.5 and c.get('outer_kind') == 'suit':
+        # 胸の張り出しを体そのものからならす(服を着た輪郭にする)。後ろへは動かさず、前に出た分だけ削る
+        zone_c = (np.abs(V[:, 0]) < 2.4) & (V[:, 1] > ypel + CHEST[0]) & (V[:, 1] < ypel + CHEST[1]) & (V[:, 2] > 0)
+        zone_c[13380:] = False
+        if zone_c.any():
+            refc = float(np.percentile(V[zone_c, 2], CHEST[2]))
+            wxc = np.clip(1 - (np.abs(V[:, 0]) - 1.7) / 0.7, 0, 1)
+            wyc = np.clip((V[:, 1] - (ypel + CHEST[0])) / 0.4, 0, 1) * np.clip(((ypel + CHEST[1]) - V[:, 1]) / 0.4, 0, 1)
+            V[:, 2] -= np.maximum(0, V[:, 2] - refc) * wxc * wyc * zone_c * 0.85
 
     # 骨の位置
     rig = json.load(open(os.path.join(mp, 'rigs', 'standard', 'rig.game_engine.json')))
@@ -374,6 +386,12 @@ def main():
             # 基準の面:胸まわりの中央値(いちばん前の点ではなく)。張り出しはここまで押し戻される
             band = [pos[i, 1] for i in chest if abs(pos[i, 0]) < 0.12 and az - 0.16 < pos[i, 2] < az + 0.05]
             ay = float(np.median(band)) if band else pos[ap, 1]
+            if drape != True:
+                # 上着:胸から腹までを覆えるよう、基準面を前寄り(おなかの前)にとる
+                tor = [pos[i, 1] for i in used if dom[i] in ('spine_01', 'spine_02', 'spine_03', 'pelvis') and abs(pos[i, 0]) < 0.12 and pos[i, 1] < 0 and az - 0.5 < pos[i, 2] < az + 0.05]
+                if tor:
+                    ay = min(ay, float(np.percentile(tor, 3)))
+                DRAPE_PLANE[0], DRAPE_PLANE[1] = ay, az
             for i in used:
                 x, y, z = pos[i]
                 if dom[i] not in ('spine_01', 'spine_02', 'spine_03', 'pelvis') or y >= 0:
@@ -485,10 +503,10 @@ def main():
             def jacket_ok(vi):
                 if top_ok(vi, jhem): return True
                 return all(dom[i] in hipset for i in vi) and P[vi, 2].min() > jhem - 0.012
-            v0 = pz + 0.16
+            v0 = pz + (0.24 if c['gender'] < 0.5 else 0.16)
             def in_v(vi):
                 m = cen(vi)
-                return m[1] < 0 and m[2] > v0 and abs(m[0]) < 0.008 + (m[2] - v0) * 0.30
+                return m[1] < 0 and m[2] > v0 and abs(m[0]) < 0.008 + (m[2] - v0) * (0.20 if c['gender'] < 0.5 else 0.30)
             jk = [(vi, ti, 'Outer') for vi, ti in body_only if jacket_ok(vi) and not in_v(vi)]
             shell('Outer', jk, 0.036, c['outer'], 0.9, smooth=80, drape='full', hem=jhem)
             if c.get('tie'):
@@ -497,6 +515,9 @@ def main():
                 z0, z1 = neck_cut - 0.015, pz + 0.10
                 rows = 9; vs, fs = [], []
                 def front_y(zz):
+                    if DRAPE_PLANE[0] is not None:
+                        # シャツの前面(基準面 + 傾き - シャツの厚み)のすぐ前
+                        return DRAPE_PLANE[0] + max(0.0, DRAPE_PLANE[1] - zz) * 0.10 - 0.025
                     near = [i for i in range(13380) if abs(P[i, 0]) < 0.035 and abs(P[i, 2] - zz) < 0.012 and P[i, 1] < 0]
                     return (min(P[i, 1] for i in near) if near else -0.13) - 0.028
                 for k in range(rows):
@@ -595,11 +616,57 @@ def main():
         crown = 1 + 1.2 * sig((dz - 0.08) / 0.015) + 0.5 * sig((dy - 0.06) / 0.015)
         shell('Hair', hair_faces, 0.0045, tuple(hair_rgb), 0.75, smooth=8, taper=5, pmul=crown)
     if style == 'bob':
-        # 補助メッシュの長髪を肩の上で切り、顔の前にかからない部分だけ使う
-        shoulder = max(bones['clavicle_l']['head'][2], bones['clavicle_r']['head'][2]) + 0.07
-        bob = [(vi, ti, 'Bob') for vi, ti in groups['helper-hair'] if P[vi, 2].mean() > shoulder and P[vi, 1].mean() > eyeC[1] + 0.045 and abs(P[vi, 0].mean() - eyeC[0]) < 0.115]
-        if bob:
-            shell('Bob', bob, 0.012, tuple(hair_rgb), 0.75, smooth=6, taper=1)
+        # ボブ:頭の輪郭に沿った輪を縦に重ねた、まとまりのある髪。顔の前は開けて、あごの高さで切りそろえる
+        hv = [i for i in range(13380) if dom[i] == 'head']
+        hz = P[hv, 2]
+        z_top = float(hz.max())
+        front_v = [i for i in hv if P[i, 1] < eyeC[1] - 0.02]
+        z_chin = float(P[front_v, 2].min()) if front_v else eyeC[2] - 0.14
+        z_bot = z_chin + 0.015
+        z_ear = eyeC[2] - 0.01
+        rows_z = list(np.arange(z_top - 0.035, z_bot, -0.014)) + [z_bot]
+        ring = []
+        for zk in rows_z:
+            zq = max(zk, z_ear - 0.03)                        # 耳より下は、耳の高さの幅を保つ
+            pts = P[[i for i in hv if abs(P[i, 2] - zq) < 0.009]]
+            if len(pts) < 6:
+                pts = P[[i for i in hv if abs(P[i, 2] - zq) < 0.02]]
+            cx, cy = float(np.median(pts[:, 0])), (pts[:, 1].min() + pts[:, 1].max()) / 2
+            # 耳が張り出す分は幅に入れない(外れ値を除く)
+            rx = float(np.percentile(np.abs(pts[:, 0] - cx), 80))
+            ry = float(np.percentile(np.abs(pts[:, 1] - cy), 92))
+            t = np.clip((z_ear - zk) / max(z_ear - z_bot, 1e-3), 0, 1)
+            off = 0.011 + 0.013 * np.sin(np.clip((z_top - zk) / 0.08, 0, 1) * np.pi / 2)   # 頭の上は薄く、横は厚く
+            if zk < z_ear:
+                off = off * (1 - 0.45 * t) - 0.006 * t       # すそは少しすぼめる(内巻き)
+            ring.append((cx, cy, rx + off, ry + off, zk))
+        # 段ごとの幅のばらつきをならす(輪郭が波打たないように)
+        arr = np.array(ring, dtype=float)
+        for _ in range(6):
+            sm = arr.copy()
+            sm[1:-1, 0:4] = 0.25 * arr[:-2, 0:4] + 0.5 * arr[1:-1, 0:4] + 0.25 * arr[2:, 0:4]
+            arr = sm
+        ring = [tuple(r_) for r_ in arr]
+        n_ang = 34
+        open_deg = 112                                       # 後ろを0度として、前に向かってこの角度まで髪で覆う
+        angs = np.radians(np.linspace(-open_deg, open_deg, n_ang))
+        vs = []
+        for (cx, cy, rx_, ry_, zk) in ring:
+            for ph in angs:
+                vs.append((cx + rx_ * math.sin(ph), cy + ry_ * math.cos(ph), zk))
+        fs = []
+        for r_ in range(len(ring) - 1):
+            for a_ in range(n_ang - 1):
+                i0 = r_ * n_ang + a_
+                fs.append([i0, i0 + 1, i0 + 1 + n_ang, i0 + n_ang])
+        me = bpy.data.meshes.new('Bob'); me.from_pydata([list(v) for v in vs], [], fs)
+        me.materials.append(make_mat('Bob', tuple(hair_rgb), 0.7)); me.update()
+        for pg in me.polygons: pg.use_smooth = True
+        ob = bpy.data.objects.new('Bob', me); scn.collection.objects.link(ob)
+        gh = ob.vertex_groups.new(name='head'); gn = ob.vertex_groups.new(name='neck_01')
+        for k, v in enumerate(vs):
+            low = float(np.clip((z_ear - v[2]) / max(z_ear - z_bot, 1e-3), 0, 1)) * 0.5   # すそは首の動きにも少し追従
+            gh.add([k], 1.0 - low, 'REPLACE'); gn.add([k], low, 'REPLACE')
 
     # ---------------- 骨
     arm = bpy.data.armatures.new('Rig')
