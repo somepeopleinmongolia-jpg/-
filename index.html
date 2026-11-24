@@ -6,21 +6,21 @@
 <title>卒論ギリギリシミュレーター</title>
 <meta name="description" content="提出まであと10日、目標は1万字。書く・調べる・相談する・寝るをやりくりして卒論を書き上げる、スマホ向けのブラウザゲーム。エンディング9種。">
 <meta name="theme-color" content="#f1f7f2">
-<link rel="canonical" href="https://somepeopleinmongolia-jpg.github.io/-/">
+<link rel="canonical" href="https://sotsuron-girigiri.web.app/">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="ja_JP">
 <meta property="og:site_name" content="卒論ギリギリシミュレーター">
 <meta property="og:title" content="卒論ギリギリシミュレーター">
 <meta property="og:description" content="提出まであと10日、目標は1万字。正気度と教授の信頼をやりくりして卒論を書き上げろ。エンディング9種。">
-<meta property="og:url" content="https://somepeopleinmongolia-jpg.github.io/-/">
-<meta property="og:image" content="https://somepeopleinmongolia-jpg.github.io/-/og.png">
+<meta property="og:url" content="https://sotsuron-girigiri.web.app/">
+<meta property="og:image" content="https://sotsuron-girigiri.web.app/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="卒論ギリギリシミュレーター 提出まであと10日">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="卒論ギリギリシミュレーター">
 <meta name="twitter:description" content="提出まであと10日、目標は1万字。卒論を書き上げるスマホ向けゲーム。">
-<meta name="twitter:image" content="https://somepeopleinmongolia-jpg.github.io/-/og.png">
+<meta name="twitter:image" content="https://sotsuron-girigiri.web.app/og.png">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='27' fill='%23fffffb' stroke='%23e23a2e' stroke-width='6'/%3E%3Ctext x='32' y='44' font-size='32' text-anchor='middle' fill='%23e23a2e' font-family='sans-serif' font-weight='900'%3E%E3%80%86%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -480,7 +480,7 @@ function rollLab(){var t=0;LABS.forEach(function(l){t+=l.w});var r=Math.random()
 function stars(n){return '★★★★★'.slice(0,n)+'☆☆☆☆☆'.slice(0,5-n)}
 
 /* 公開URL。claude.ai上やローカルファイルで開いたときは公開先のURLを使う */
-var CANON_URL='https://somepeopleinmongolia-jpg.github.io/-/';
+var CANON_URL='https://sotsuron-girigiri.web.app/';
 function shareURL(){
   try{
     if(/^https?:$/.test(location.protocol)&&!/(^|\.)(claude\.ai|claudeusercontent\.com|anthropic\.com)$/.test(location.hostname))return location.origin+location.pathname;

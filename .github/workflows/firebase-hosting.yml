@@ -1,0 +1,25 @@
+# main(またはこの作業ブランチ)にpushすると Firebase Hosting に公開する。
+# リポジトリの Secrets に FIREBASE_SERVICE_ACCOUNT(サービスアカウントのJSON)を登録するまでは、何もせずに終わる。
+name: Deploy to Firebase Hosting
+on:
+  push:
+    branches: [main, claude/thesis-generator-fd4u9r]
+  workflow_dispatch:
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - id: check
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -n "$SA" ]; then echo "ok=true" >> "$GITHUB_OUTPUT"; else echo "FIREBASE_SERVICE_ACCOUNT が未登録なので公開をスキップします"; fi
+      - if: steps.check.outputs.ok == 'true'
+        uses: actions/checkout@v4
+      - if: steps.check.outputs.ok == 'true'
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          projectId: sotsuron-girigiri
+          channelId: live

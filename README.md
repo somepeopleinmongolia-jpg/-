@@ -2,21 +2,38 @@
 
 卒論を書き上げる10日間を遊ぶ、スマホ向けのブラウザゲーム。`index.html` 1枚で動く(ビルド不要、外部依存はGoogle Fontsのみ)。
 
-公開URL(GitHub Pages):https://somepeopleinmongolia-jpg.github.io/-/
+公開URL(Firebase Hosting):https://sotsuron-girigiri.web.app/
 
 ## ファイル
 - `index.html` … ゲーム本体。これだけで遊べる。
 - `og.png` … シェア用の画像(1200×630)。OGPタグから参照する。
-- `.nojekyll` … GitHub PagesでJekyll処理をしない。
+- `firebase.json` / `.firebaserc` … Firebase Hosting の設定。公開するのは `index.html` と `og.png` だけ(デプロイ前に `tools/build.js` が `public/` にコピーする)。
+- `.github/workflows/firebase-hosting.yml` … push時に自動で公開するワークフロー。
+- `tools/set-url.js` … 公開URL(OGP・シェア文・FirebaseのプロジェクトID)を一括で差し替える。
 - `tools/balance.js` … 自動プレイでエンディングの出現率を測る(Playwright)。`node tools/balance.js 300`
 - `tools/og.html`, `tools/og.js` … `og.png` の元と書き出しスクリプト。`node tools/og.js`
 
-## 公開(GitHub Pages)
-1. リポジトリの Settings → Pages を開く。
-2. Source を「Deploy from a branch」にし、公開したいブランチと `/ (root)` を選んで保存。
-3. 数分後に上の公開URLで開ける。
+## 公開(Firebase Hosting / `○○.web.app`)
+公開URLは `https://<FirebaseのプロジェクトID>.web.app/`。いまの設定は `sotsuron-girigiri`。
 
-別の場所(Vercel / Netlify など)に置く場合は、`index.html` の `CANON_URL` と、`<head>` の `og:url` / `og:image` / `twitter:image` / `canonical` のURLを書き換える。
+### 初回だけ
+1. https://console.firebase.google.com/ で「プロジェクトを追加」。プロジェクトIDがそのままURLになる(全世界で一意。取られていたら別のIDにする)。Google アナリティクスは不要。
+2. IDが `sotsuron-girigiri` と違う場合は、`node tools/set-url.js https://<ID>.web.app/` を実行してコミットする(index.html のOGP・シェアURL、`.firebaserc`、ワークフローを一括で書き換える)。
+
+### 手元のPCから公開する場合
+```
+npx firebase-tools login
+npx firebase-tools deploy --only hosting
+```
+
+### GitHubにpushしたら自動で公開する場合
+1. Firebaseコンソール → プロジェクトの設定 → サービスアカウント → 「新しい秘密鍵を生成」でJSONをダウンロード。
+2. GitHubのリポジトリ → Settings → Secrets and variables → Actions に `FIREBASE_SERVICE_ACCOUNT` という名前でJSONの中身を登録。
+3. 以後、`main` か作業ブランチにpushすると `.github/workflows/firebase-hosting.yml` が公開する。
+
+(`npx firebase-tools init hosting:github` を使うと、1と2を自動でやってくれる。その場合、既存の `firebase.json` は上書きしないこと。)
+
+GitHub Pages など別の場所でも、`index.html` をそのまま置けば動く。その場合も `tools/set-url.js` でURLを合わせる。
 
 ## メモ
 - 最初にラボ配属ガチャを引く。研究室(7タイプ、名字はランダム)で先生の厳しさや初期値、各種倍率が変わる。定義は `LABS` / `LAB_BASE`。
