@@ -231,7 +231,7 @@ def main():
     for e in (eyeL, eyeR):
         d = P - e
         # x方向に眉の幅、z方向に目の 1.8〜3.0cm 上、前面のみ
-        bx = np.clip(1 - (np.abs(d[:, 0] + np.sign(e[0]) * 0.012) / 0.024) ** 2, 0, 1)
+        bx = np.clip(1 - (np.abs(d[:, 0] - np.sign(e[0]) * 0.005) / 0.021) ** 2, 0, 1)
         bz = np.clip(1 - ((d[:, 2] - 0.026) / 0.0085) ** 2, 0, 1)
         front = (d[:, 1] < 0.0).astype(float) * (np.abs(d[:, 1]) < 0.05)
         b = np.clip(bx * bz * front * c['brow'] * 1.7, 0, 0.95)
@@ -255,13 +255,17 @@ def main():
     eyeC = (eyeL + eyeR) / 2
     sig = lambda x: 1 / (1 + np.exp(-x))
     dy = P[:, 1] - eyeC[1]; dz = P[:, 2] - eyeC[2]
+    dx = np.abs(P[:, 0] - eyeC[0])
+    thr = 0.056 - 0.016 * np.clip(dx / 0.075, 0, 1) ** 1.5      # 中央が高く、こめかみで低い
     hw = np.maximum.reduce([
-        sig((dz - 0.046) / 0.004) * sig((dy + 0.02) / 0.006),
+        sig((dz - thr) / 0.0055) * sig((dy + 0.02) / 0.006),
         sig((dz - 0.030) / 0.004) * sig((dy - 0.034) / 0.004),
         sig((dy - 0.068) / 0.005) * sig((dz + 0.072) / 0.006),
     ])
     hw[13380:] = 0
     hw *= np.isin(dom, ['head', 'neck_01'])
+    ear = sig((dx - 0.058) / 0.006) * sig((dz + 0.062) / 0.005) * sig((0.034 - dz) / 0.005) * sig((dy - 0.0) / 0.006) * sig((0.092 - dy) / 0.006)
+    hw *= (1 - ear)
     hair_rgb = np.array(c['hair']) * (1 - c['hair_gray']) + np.array([0.62, 0.62, 0.62]) * c['hair_gray']
     col = col * (1 - hw[:, None]) + hair_rgb * hw[:, None]
 
@@ -566,9 +570,9 @@ def main():
     if style == 'bob':
         # 補助メッシュの長髪を肩の上で切り、顔の前にかからない部分だけ使う
         shoulder = max(bones['clavicle_l']['head'][2], bones['clavicle_r']['head'][2]) + 0.07
-        bob = [(vi, ti, 'Bob') for vi, ti in groups['helper-hair'] if P[vi, 2].mean() > shoulder and P[vi, 1].mean() > eyeC[1] + 0.012]
+        bob = [(vi, ti, 'Bob') for vi, ti in groups['helper-hair'] if P[vi, 2].mean() > shoulder and P[vi, 1].mean() > eyeC[1] + 0.045 and abs(P[vi, 0].mean() - eyeC[0]) < 0.115]
         if bob:
-            shell('Bob', bob, 0.004, tuple(hair_rgb), 0.75, smooth=2)
+            shell('Bob', bob, 0.012, tuple(hair_rgb), 0.75, smooth=6, taper=1)
 
     # ---------------- 骨
     arm = bpy.data.armatures.new('Rig')
