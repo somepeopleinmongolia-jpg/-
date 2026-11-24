@@ -44,9 +44,18 @@ CHARS = {
                top=(0.70, 0.78, 0.90), outer=(0.12, 0.16, 0.28), outer_kind='suit', pants=(0.12, 0.16, 0.28), shoes=(0.06, 0.05, 0.05), brow=0.45),
     'friend': C(age=0.52, muscle=0.55, weight=0.5, height=0.56, top=(0.52, 0.54, 0.50),
                 pants=(0.18, 0.24, 0.36), shoes=(0.86, 0.86, 0.84), brow=0.6),
-    'lover': C(gender=0.0, age=0.51, muscle=0.45, weight=0.42, height=0.45, hair_style='bob', skin=(0.87, 0.69, 0.57),
-               hair=(0.12, 0.08, 0.06), top=(0.88, 0.60, 0.64), skirt=(0.22, 0.27, 0.40), pants=(0.09, 0.09, 0.12),
-               shoes=(0.85, 0.82, 0.78), brow=0.4),
+    'lover': C(gender=0.0, age=0.52, muscle=0.40, weight=0.40, height=0.45, hair_style='bob', skin=(0.93, 0.71, 0.58),
+               hair=(0.20, 0.11, 0.07), top=(0.88, 0.60, 0.64), skirt=(0.22, 0.27, 0.40), pants=(0.09, 0.09, 0.12),
+               shoes=(0.85, 0.82, 0.78), brow=0.32, blush=0.40, blush_rgb=(0.95, 0.50, 0.52), lipc=(0.95, 0.48, 0.50),
+               liner=0.85, iris_t=0.80, iris=(0.36, 0.22, 0.14),
+               face={'eyes/l-eye-scale-incr': 0.55, 'eyes/l-eye-height1-incr': 0.45, 'eyes/l-eye-height2-incr': 0.25,
+                     'eyes/l-eye-trans-down': 0.15, 'eyes/l-eye-trans-out': 0.12,
+                     'nose/nose-scale-vert-decr': 0.35, 'nose/nose-scale-horiz-decr': 0.3, 'nose/nose-volume-decr': 0.3, 'nose/nose-point-up': 0.2,
+                     'chin/chin-height-decr': 0.35, 'chin/chin-width-decr': 0.3, 'chin/chin-prominent-decr': 0.3,
+                     'cheek/l-cheek-volume-incr': 0.35,
+                     'mouth/mouth-scale-horiz-decr': 0.3, 'mouth/mouth-angles-up': 0.45, 'mouth/mouth-lowerlip-volume-incr': 0.2,
+                     'head/head-round': 0.3,
+                     'eyebrows/eyebrows-trans-up': 0.2}),
     'mother': C(gender=0.0, age=0.8, muscle=0.4, weight=0.66, height=0.38, hair_style='bob', hair_gray=0.3,
                 top=(0.72, 0.56, 0.26), outer=(0.80, 0.36, 0.34), outer_kind='apron', pants=(0.36, 0.30, 0.25), brow=0.4),
 }
@@ -190,6 +199,10 @@ def main():
         # 服の上から体の線が出すぎないよう、胸の張り出しを控えめにする
         for t in ('breast-point-decr', 'nipple-point-decr'):
             V = V + load_target(os.path.join(mp, 'targets', 'breast', t + '.target.gz'), n)
+    # 顔の調整:かわいらしさなど。{ターゲット名: 重み}。l- は r- にも同じだけ効かせる
+    for fpath, fw in c.get('face', {}).items():
+        for pth in ([fpath, fpath.replace('/l-', '/r-')] if '/l-' in fpath else [fpath]):
+            V = V + fw * load_target(os.path.join(mp, 'targets', pth + '.target.gz'), n)
     GROUND[0] = -obj2bl(V[:13380])[:, 2].min()
     blink = (expr_delta(mp, 'eye-left-closure', n, c['race']) + expr_delta(mp, 'eye-right-closure', n, c['race']))
     mouth = expr_delta(mp, 'mouth-open', n, c['race'])
@@ -279,7 +292,7 @@ def main():
     skin = np.array(c['skin'])
     rng = np.random.default_rng(7)
     col = np.tile(skin, (n, 1)) * (0.97 + 0.06 * rng.random((n, 1)))
-    lipc = skin * np.array([0.86, 0.55, 0.52])
+    lipc = skin * np.array(c.get('lipc', [0.86, 0.55, 0.52]))
     col = col * (1 - lip[:, None] * 0.85) + lipc * lip[:, None] * 0.85
     # 眉:目の関節の少し上、額の帯
     eyeL = P[gverts('joint-l-eye')].mean(0); eyeR = P[gverts('joint-r-eye')].mean(0)
@@ -295,16 +308,23 @@ def main():
         hc = np.array(c['hair']) * 1.1
         col = col * (1 - b[:, None]) + hc * b[:, None]
         # 頬:目の下外側
-        ch = np.exp(-(((d[:, 0] - np.sign(e[0]) * 0.012) / 0.02) ** 2 + ((d[:, 2] + 0.03) / 0.018) ** 2)) * front * 0.12
+        ch = np.exp(-(((d[:, 0] - np.sign(e[0]) * 0.012) / 0.02) ** 2 + ((d[:, 2] + 0.03) / 0.018) ** 2)) * front * c.get('blush', 0.12)
         ch[13380:] = 0
-        col = col * (1 - ch[:, None]) + np.array([0.85, 0.45, 0.42]) * ch[:, None]
+        col = col * (1 - ch[:, None]) + np.array(c.get('blush_rgb', [0.85, 0.45, 0.42])) * ch[:, None]
+        if c.get('liner'):
+            # 上まぶたのライン(まつげの代わり)
+            rr_ = np.sqrt(d[:, 0] ** 2 + d[:, 2] ** 2)
+            lw = np.exp(-((rr_ - 0.0135) / 0.0030) ** 2) * np.clip((d[:, 2] + 0.002) / 0.005, 0, 1) * front * c['liner']
+            lw[13380:] = 0
+            col = col * (1 - lw[:, None]) + np.array([0.12, 0.07, 0.06]) * lw[:, None]
     # 目:白目+前方の頂点を虹彩・瞳孔に
     for side in ('l', 'r'):
         ev = gverts(f'helper-{side}-eye')
         cen = P[ev].mean(0)
         fwd = (P[ev] - cen) / np.maximum(np.linalg.norm(P[ev] - cen, axis=1, keepdims=True), 1e-9)
         f = -fwd[:, 1]  # -Y が正面
-        ec = np.where(f[:, None] > 0.985, [0.04, 0.03, 0.03], np.where(f[:, None] > 0.90, [0.30, 0.19, 0.12], [0.93, 0.91, 0.88]))
+        iris_t = c.get('iris_t', 0.90)
+        ec = np.where(f[:, None] > 0.985, [0.04, 0.03, 0.03], np.where(f[:, None] > iris_t, c.get('iris', [0.30, 0.19, 0.12]), [0.93, 0.91, 0.88]))
         col[ev] = ec
 
     # 髪:なめらかな重み。肌に塗って生え際をぼかし、内側だけ殻で厚みを出す
@@ -683,7 +703,7 @@ def main():
             rx = float(np.percentile(np.abs(pts[:, 0] - cx), 80))
             ry = float(np.percentile(np.abs(pts[:, 1] - cy), 92))
             t = np.clip((z_ear - zk) / max(z_ear - z_bot, 1e-3), 0, 1)
-            off = float(os.environ.get('BOB_SCALE', HC['bob_scale'])) * (0.011 + 0.013 * np.sin(np.clip((z_top - zk) / 0.08, 0, 1) * np.pi / 2))   # 頭の上は薄く、横は厚く
+            off = float(os.environ.get('BOB_SCALE', HC['bob_scale'])) * (0.017 + 0.013 * np.sin(np.clip((z_top - zk) / 0.08, 0, 1) * np.pi / 2))   # 頭の上は薄く、横は厚く
             if zk < z_ear:
                 off = off * (1 - 0.45 * t) - 0.006 * t       # すそは少しすぼめる(内巻き)
             ring.append((cx, cy, rx + off, ry + off, zk))
