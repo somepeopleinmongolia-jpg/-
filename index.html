@@ -537,8 +537,11 @@ var ENDINGS=[
   {id:'early',rank:'S+',stamp:'秀',em:'⚡',title:'余裕の早期提出',good:1,desc:function(c){return '締切の'+c.early+'日前に提出ボタンを押した。同期が震えている。'}},
   {id:'excellent',rank:'S',stamp:'優',em:'🏆',title:'優秀卒論賞',good:1,desc:function(){return '教授から「大学院に来ない?」と言われた。ゼミの伝説になった。'}},
   {id:'graduate',rank:'A',stamp:'良',em:'🎓',title:'無事卒業',good:1,desc:function(){return '提出完了。卒業確定。今夜は何も考えずに寝ていい。'}},
+  {id:'faint',rank:'B+',stamp:'倒',em:'🛌',title:'提出と同時に倒れる',good:1,desc:function(){return '提出ボタンを押した瞬間、意識が遠のいた。目が覚めたら、卒業が決まっていた。診断は「ただの寝不足」。'}},
   {id:'charsonly',rank:'B',stamp:'可',em:'🩹',title:'字数だけは立派',good:1,desc:function(){return '字数は完璧。中身は、教授も深くは聞かなかった。'}},
   {id:'mercy',rank:'B',stamp:'情',em:'🙏',title:'教授の温情',good:1,desc:function(c){return 'あと'+fmt(c.short)+'字足りない。でも教授が「ここまでやったなら」と判を押してくれた。'}},
+  {id:'barely',rank:'B-',stamp:'誤',em:'🧮',title:'数え間違いで受理',good:1,desc:function(c){return 'あと'+fmt(c.short)+'字。窓口の職員が、字数を数え間違えた。気づいたときには、判が押されていた。'}},
+  {id:'getaway',rank:'C',stamp:'逃',em:'🏃',title:'逃げ切り卒業',good:0,desc:function(){return '怪しまれたまま、なぜか何も聞かれなかった。卒業証書は、少しひんやりしていた。'}},
   {id:'repeat',rank:'D',stamp:'不',em:'📉',title:'留年',good:0,desc:function(c){return 'あと'+fmt(c.short)+'字。提出ボタンの前で時間切れ。来年の自分に託した。'}},
   {id:'sus',rank:'F',stamp:'疑',em:'🚨',title:'研究室に呼び出し',good:0,desc:function(){return '「ちょっと来て」というメールが届いた。用件は書かれていない。'}},
   {id:'burnout',rank:'F',stamp:'休',em:'💀',title:'燃え尽きて休学',good:0,desc:function(){return '気づいたら実家の天井を見ていた。休学届は今度書く。'}},
@@ -1147,11 +1150,14 @@ function judge(early){
   if(S.chars<1000)return 'blank';
   if(S.sus>=1&&S.trust<L.susT)return 'sus';
   if(S.chars>=GOAL){
+    if(S.sus>=1)return 'getaway';                 /* 疑惑がついたまま、信頼で押し切った */
     if(early>=2&&S.q>=72&&S.trust>=60&&S.sus===0&&!S.hits)return 'early';
     if(S.q>=80&&S.trust>=L.exTrust&&S.sus===0&&!S.hits)return 'excellent';
+    if(S.down)return 'faint';                     /* 途中で一度倒れたが、書き上げた */
     if(S.q>=45)return 'graduate';
     return 'charsonly';
   }
+  if(S.chars>=GOAL*0.92&&S.trust<L.mercy)return 'barely';   /* あと数百字、数え間違いで受理 */
   return (S.trust>=L.mercy&&S.chars>=GOAL*0.7)?'mercy':'repeat';
 }
 
@@ -1206,6 +1212,9 @@ function submitScene(id){
     okan:['……あの、そちらの方は?','いつもお世話になっております。受理します(米つき)。','bow','受理'],
     aigrad:['……これは、どなたの原稿でしょうか。','受理します。署名はAIでよろしいですか。','tilt','受理'],
     nobel:['……ストックホルムから、お電話です。','受理します。いや、受理というか。','nod','受理'],
+    faint:['……顔色が、すごく悪いですが。','受理します。……あの、大丈夫ですか?','bow','受理'],
+    barely:['……あれ、少し足りないような。……いえ、数え間違いでした。','受理します。','tilt','受理(?)'],
+    getaway:['……少々お待ちください。……はい、受理します。','何も聞かれませんでした。','nod','受理'],
     nature:['……あの、掲載通知のほうが、先に届いているのですが。','受理します。……受理というか、おめでとうございます。','nod','受理']
   };
   if(id==='repeat'){
@@ -1338,7 +1347,7 @@ function confetti(n){
 function calcScore(id,early){
   var sc=Math.min(S.chars/GOAL,1)*40+S.q*0.35+S.trust*0.15+S.san*0.1-S.sus*10+(early>=2?5:0);
   /* ランクとスコアが食い違わないよう、結末ごとに上限を置く */
-  var CAP={repeat:45,sus:40,burnout:35,blank:5,mercy:69,charsonly:69};
+  var CAP={repeat:45,sus:40,burnout:35,blank:5,mercy:69,charsonly:69,barely:64,getaway:58,faint:79};
   if(CAP[id]!=null)sc=Math.min(sc,CAP[id]);
   return clamp(Math.round(sc),0,100);
 }
@@ -1359,6 +1368,9 @@ var STYLE_BY_END={
   okan:'母が代理で提出した体裁。母の口調で「ちゃんと食べてる?」が研究の主要な変数になる。',
   aigrad:'著者がAI。「ご質問ありがとうございます」で始まり、「他にお手伝いできることはありますか?」で終わる。',
   nobel:'予想外の結果が大発見になった体裁。受賞理由が、実験室の観葉植物の世話になっている。',
+  faint:'ほぼ標準的な出来。ただし午前4時に書かれた気配があり、最後に「提出後、筆者は18時間眠った」と添えられる。',
+  barely:'ほぼ完成しているが、考察が短い。「字数は、職員が数えたところ、ちょうど足りていた」で終わる。',
+  getaway:'前半は学生らしい文体だが、途中から急に整いすぎる。指導教員は何も言わなかった。',
   nature:'世界的な科学雑誌に掲載された体裁。査読コメントが付き、「新規性はある」「図がきれい」と評される。なぜ採択されたのかは、筆者にもわからない。'
 };
 
@@ -1657,13 +1669,26 @@ function makeThesis(o){
     sec(H[6],[sur+'先生は、掲載通知のメールを、3回読み返していた。']);
     sec(H[7],[],['[1] 筆者(2026)本稿.世界的な科学雑誌(号数未定).掲載済み。']);
     d.tail='(掲載料:別途請求)';
-  }else if(id==='graduate'){
+  }else if(id==='graduate'||id==='faint'){
     sec(H[0],abs);
     sec(H[1],intro);
     sec(H[2],method.slice(0,3));
     var r3g=sec(H[3],result.slice(0,2));r3g.table=table;r3g.fig=fig;
     sec(H[4],disc.slice(0,2).concat(notes.slice(0,2)));
     sec(H[5],concl);sec(H[6],[ACK]);sec(H[7],[],REFS);
+    if(id==='faint'){
+      d.secs[4].p.push('※この章は、午前4時に書かれた。');
+      d.tail='(提出後、筆者は18時間眠った)';
+    }
+  }else if(id==='barely'){
+    sec(H[0],abs.slice(0,2));
+    sec(H[1],intro.slice(0,3));
+    sec(H[2],method.slice(0,3));
+    var rb=sec(H[3],result.slice(0,2));rb.table=table;
+    sec(H[4],[disc[0],'なお、考察の続きは、時間切れのため書けなかった。'].concat(notes.slice(0,1)));
+    sec(H[5],[concl[0],'(字数は、窓口の職員が数えたところ、ちょうど足りていた。)']);
+    sec(H[6],[ACK]);
+    d.tail='(受付印:押印済)';
   }else if(id==='charsonly'){
     d.title=tp.full+'に関する研究についての一考察(増補版)';
     sec(H[0],pad(abs.slice(0,2)));sec(H[1],pad(intro.slice(0,3)));sec(H[2],pad(method.slice(0,2)));
@@ -1684,13 +1709,13 @@ function makeThesis(o){
     sec(H[3],[],[f('{B}のデータは途中まで取れた(n = {n})'),'表1(あとで貼る)','図1(作成予定。縦軸の単位も予定)','有意差:たぶんある']);
     sec(H[4],[],[f('{B}がこうなった理由 → 考え中'),'先行研究との比較 → ここに書く','']);
     d.tail='(以下、未完)';
-  }else if(id==='sus'){
+  }else if(id==='sus'||id==='getaway'){
     sec(H[0],F(['本稿は、{AB}をめぐる従来の議論を批判的に検討し、その多面的な含意を明らかにするものである。']));
     sec(H[1],F(['{B}について、前から少し気になっていたので調べてみることにした。','ネットで調べたら色々出てきたが、正直むずかしくてよく分からなかった。','なので、自分なりに{C}をやってみようと思う。']));
     sec(H[2],['とりあえず、'+method[0],'やり方は、研究室の先輩に聞いて決めた。']);
     var rs=sec(H[3],F(['得られた知見は、{AB}をめぐる従来の議論に対し、多層的かつ包括的な再解釈を迫るものである。']).concat([result[1],'とりわけ、当該現象の背後にある構造的要因は、看過し得ない理論的含意を有している。']));rs.table=table;
     sec(H[4],F(['以上の分析を踏まえると、{B}は単一の要因に還元し得ない複合的な現象として把握されるべきである。']).concat('※この章から文体が急に変わったのは、気のせいである。'));
-    sec(H[5],['本稿は、包括的な検討を通じて、新たな分析視角を提示した。','(指導教員のメモ:この章の構成、研究室の過去の卒論とよく似ていませんか?)']);
+    sec(H[5],['本稿は、包括的な検討を通じて、新たな分析視角を提示した。',id==='getaway'?'(指導教員のメモ:なし。何も言われなかった。)':'(指導教員のメモ:この章の構成、研究室の過去の卒論とよく似ていませんか?)']);
   }else if(id==='burnout'){
     var cz=[],pool=TH_CRAZY.slice();
     for(var i=0;i<5;i++)cz.push(pool.splice(Math.floor(R()*pool.length),1)[0]);
