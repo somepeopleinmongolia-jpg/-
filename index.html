@@ -218,6 +218,7 @@ details.box textarea{width:100%;height:150px;margin-top:8px;font:inherit;font-si
 .helptip{font-size:12.5px;font-weight:700;line-height:1.55;background:var(--marker);border:2px solid var(--ink);border-radius:8px;padding:8px 10px;cursor:pointer}
 .nohit{font:inherit;font-size:11px;font-weight:900;border:2px solid var(--ink);background:var(--marker);color:var(--ink);border-radius:6px;padding:0 6px;margin-left:4px}
 .nohit.hit{background:var(--pen);border-color:var(--pen);color:#fff}
+.sc-hl{font-family:var(--f-doc);font-weight:700;font-size:14.5px;line-height:1.6;border-left:3px solid var(--pen);padding-left:9px}
 .sc-near{font-size:13px;font-weight:900;color:var(--pen)}
 .card.incident{border-color:var(--pen);box-shadow:5px 5px 0 var(--pen)}
 
@@ -1293,6 +1294,45 @@ function finish(submitEarly){
   cine(submitScene(id)).then(function(){endGame(id,early)});
 }
 
+/* 模擬卒論の材料(結果画面の時点の状態) */
+function makeSnap(E,ctx,score,theme){
+  return {tp:S_TITLE,stats:{dodged:S.dodged,sleeps:S.sleeps,writes:S.writes,minSan:S.minSan,cut:S.cut,backups:S.backups},chaos:chaosLevel(),marks:Object.assign({},S.marks),scraps:S.scraps.slice(),lab:L.lab,sur:L.sur,theme:theme,end:E.id,title:E.title,score:score,early:ctx.early,chars:S.chars,q:S.q,trust:S.trust,san:S.san,sus:S.sus};
+}
+/* 卒論から、シェア文に載せる「いちばん笑える1行」を選ぶ */
+var HL_TRACE=/失われ|こぼれ|正気度は最低|赤ペン|バックアップ|予備実験|発見と呼ぶ|□|jjjj|ご質問|記憶がない|昨日まで|午前4時|気のせい|よく似て|キーボード|フリーズ|夢の中|削除された/;   /* そのプレイ固有の出来事 */
+var HL_FUN=/にゃ|母|AI|査読|返信|受理|備品|観葉植物|18時間|参考文献を参照|数え|取り消し|返納|既読|おやつ|米|こたつ|ストックホルム|掲載|新規性|誤提出|ミケ|宇宙|銀河|段ボール|カレー|猫/;
+var HL_BORING=/筆者も今回はじめて知った|筆者の知る限り|筆者が検索した範囲|対象は|調査期間|記録には|統計解析|平均値/;
+function pickHL(d){
+  var best='',bs=-99;
+  function add(t,w){
+    t=String(t||'').replace(/\s+/g,' ').trim();
+    if(t.length<6)return;
+    if(!/[)。!?」]$/.test(t))t+='。';
+    var sc=w+(HL_TRACE.test(t)?7:0)+(HL_FUN.test(t)?4:0)-(HL_BORING.test(t)?6:0)-(/jjjj/.test(t)?20:0)+(t.length<=34?2:0)-(t.length>60?4:0)-(/^本研究|^本稿|^仮説|^図|^表|^なお、本稿/.test(t)?3:0)-(/^\[|^\(あとで書く\)|^\(未記入\)/.test(t)?6:0);
+    if(sc>bs){bs=sc;best=t}
+  }
+  if(d.tail)add(d.tail,8);
+  d.secs.forEach(function(sx){
+    var w=sx.h==='指導教員のコメント'?9:sx.h==='査読コメント'?5:sx.h==='謝辞'?3:0;
+    (sx.p||[]).forEach(function(x){String(x).split('。').forEach(function(t){if(t)add(t,w)})});
+    if(sx.h!=='参考文献')(sx.li||[]).forEach(function(x){add(x,w)});
+  });
+  if(best.length>34)best=best.slice(0,33)+'…';
+  return best;
+}
+/* Xの文字数(全角は2、URLは23として数える) */
+function xLen(t){
+  var n=0;
+  t=t.replace(/https?:\/\/\S+/g,function(){n+=23;return ''});
+  for(var i=0;i<t.length;i++){
+    var c=t.charCodeAt(i);
+    if(c===0xFE0F||c===0x200D)continue;
+    if(c>=0xD800&&c<=0xDBFF){n+=2;i++;continue}
+    n+=((c<=0x10FF)||(c>=0x2000&&c<=0x200D)||(c>=0x2010&&c<=0x201F)||(c>=0x2032&&c<=0x2037))?1:2;
+  }
+  return n;
+}
+
 function endGame(id,early,opt){
   early=early||0;
   if(id==='burnout'&&S.dayLog.length)hist.push(S.dayLog.join(''));
@@ -1306,8 +1346,24 @@ function endGame(id,early,opt){
   for(var i=0;i<hist.length;i+=5)rows.push(hist.slice(i,i+5).join(' '));
   var score=E.hidden?null:calcScore(id,early);
   var near=(id==='graduate'||id==='charsonly')&&S.q>=80&&S.trust>=L.exTrust&&S.sus===0&&S.hits>0;
-  var text='【卒論ギリギリシミュレーター】\n'+E.em+' '+E.title+(E.hidden?' ※隠しエンディング!':'(ランク'+E.rank+' / '+score+'点)')+'\n『'+theme+'』\n配属:'+L.lab.em+L.labName+'('+L.lab.name+'・'+L.lab.rar+')\n'+fmt(S.chars)+'字 / '+fmt(GOAL)+'字 ・ '+when+'\n'+rows.join('\n')+'\n'+shareURL()+'\n#卒論ギリギリシミュ #卒論';
-  var enc=encodeURIComponent(text);
+  var snap0=makeSnap(E,ctx,score,theme);
+  var seed0=(Date.now()^Math.floor(Math.random()*1e9))>>>0;
+  var hl='';try{hl=pickHL(makeThesis(Object.assign({seed:seed0},snap0)))}catch(e){hl=''}
+  /* シェア文:lvl 0=全部 / 1=絵文字ログなし / 2=さらに配属なし。Xには、280(全角140字)に収まる最大のものを使う */
+  function buildShare(h,lvl){
+    return '【卒論ギリギリシミュレーター】\n'+E.em+' '+E.title+(E.hidden?' ※隠しエンディング!':'(ランク'+E.rank+' / '+score+'点)')+'\n『'+theme+'』\n'+
+      (h?'卒論より:「'+h+'」\n':'')+
+      (lvl>=2?'':'配属:'+L.lab.em+L.labName+'('+L.lab.name+'・'+L.lab.rar+')\n')+
+      fmt(S.chars)+'字 / '+fmt(GOAL)+'字 ・ '+when+'\n'+
+      (lvl>=1?'':rows.join('\n')+'\n')+
+      shareURL()+'\n#卒論ギリギリシミュ #卒論';
+  }
+  function xText(h){
+    for(var l=0;l<=2;l++){var t=buildShare(h,l);if(xLen(t)<=280)return t}
+    return buildShare('',2);
+  }
+  var text=buildShare(hl,0),xt=xText(hl);
+  var enc=encodeURIComponent(text),encX=encodeURIComponent(xt);
   setRoot(
     '<main class="result">'+
       '<section class="card share enter" id="sharecard">'+
@@ -1316,7 +1372,8 @@ function endGame(id,early,opt){
         '<div class="sc-theme">『'+esc(theme)+'』</div>'+
         '<h2 class="sc-title">'+E.em+' '+E.title+'</h2>'+
         '<span class="sc-rank">'+(E.hidden?'隠しエンディング ・ 測定不能':'ランク '+E.rank+' ・ '+score+'点')+'</span>'+
-        '<p class="sc-desc">'+esc(E.desc(ctx))+'</p>'+(near?'<p class="sc-near">惜しい!ハプニングを食らっていなければ、優秀卒論賞だった。</p>':'')+
+        '<p class="sc-desc">'+esc(E.desc(ctx))+'</p>'+
+        '<p class="sc-hl" id="schl"'+(hl?'':' hidden')+'>卒論より:「'+esc(hl)+'」</p>'+(near?'<p class="sc-near">惜しい!ハプニングを食らっていなければ、優秀卒論賞だった。</p>':'')+
         '<dl class="stats" style="margin:0">'+
           '<div><dt>文字数</dt><dd>'+fmt(S.chars)+'</dd></div>'+
           '<div><dt>提出</dt><dd>'+esc(when)+'</dd></div>'+
@@ -1331,7 +1388,7 @@ function endGame(id,early,opt){
       '</section>'+
       '<div class="share-btns">'+
         '<button class="btn marker full" id="copy" type="button">結果をコピーしてシェア</button>'+
-        '<a class="btn" id="xpost" href="https://twitter.com/intent/tweet?text='+enc+'" target="_blank" rel="noopener noreferrer">Xでポスト</a>'+
+        '<a class="btn" id="xpost" href="https://twitter.com/intent/tweet?text='+encX+'" target="_blank" rel="noopener noreferrer">Xでポスト</a>'+
         '<a class="btn" id="line" href="https://line.me/R/share?text='+enc+'" target="_blank" rel="noopener noreferrer">LINEで送る</a>'+
       '</div>'+
       '<details class="box" id="tbox"><summary>シェア用テキストを表示</summary><textarea id="ttxt" readonly></textarea></details>'+
@@ -1354,10 +1411,17 @@ function endGame(id,early,opt){
       '<details class="box"><summary>エンディング図鑑</summary><div style="margin-top:10px">'+collectionHTML()+'</div></details>'+
     '</main>'
   );
-  $('#ttxt').value=text;
+  function applyShare(){
+    text=buildShare(hl,0);xt=xText(hl);
+    $('#ttxt').value=text;
+    $('#xpost').href='https://twitter.com/intent/tweet?text='+encodeURIComponent(xt);
+    $('#line').href='https://line.me/R/share?text='+encodeURIComponent(text);
+    var e=$('#schl');if(e){e.hidden=!hl;e.textContent='卒論より:「'+hl+'」'}
+  }
+  applyShare();
   $('#copy').onclick=function(){copyText(text,this)};
   $('#again').onclick=function(){renderTitle()};
-  setupThesis(E,ctx,score,theme);
+  setupThesis(E,ctx,score,theme,{seed:seed0,onChange:function(h){hl=h;applyShare()}});
   jingle(!!E.good);
   if(E.good)confetti(id==='early'||id==='excellent'?60:32);
 }
@@ -1877,15 +1941,16 @@ function saveFile(name,text,say){
   }else blob();
 }
 
-function setupThesis(E,ctx,score,theme){
+function setupThesis(E,ctx,score,theme,opts){
   var sec=$('#thesis');if(!sec)return;
-  var snap={tp:S_TITLE,stats:{dodged:S.dodged,sleeps:S.sleeps,writes:S.writes,minSan:S.minSan,cut:S.cut,backups:S.backups},chaos:chaosLevel(),marks:Object.assign({},S.marks),scraps:S.scraps.slice(),lab:L.lab,sur:L.sur,theme:theme,end:E.id,title:E.title,score:score,early:ctx.early,chars:S.chars,q:S.q,trust:S.trust,san:S.san,sus:S.sus};
+  var snap=makeSnap(E,ctx,score,theme);
   var gen=$('#gen'),paper=$('#paper'),msg=$('#thmsg'),btns=$('#paperbtns'),aiBtn=$('#ai');
-  var last='',seed=(Date.now()^Math.floor(Math.random()*1e9))>>>0;
+  var last='',seed=(opts&&opts.seed!=null)?opts.seed:(Date.now()^Math.floor(Math.random()*1e9))>>>0;
   function say(t){msg.textContent=t;msg.hidden=!t}
   function show(){
     var d=makeThesis(Object.assign({seed:seed},snap));
     last=thesisText(d);
+    if(opts&&opts.onChange)opts.onChange(pickHL(d));
     paper.classList.remove('raw');paper.innerHTML=thesisHTML(d);paper.hidden=false;paper.scrollTop=0;btns.hidden=false;
     paper.classList.add('reveal');
     Array.prototype.forEach.call(paper.children,function(c,i){c.style.animationDelay=Math.min(i*70,1400)+'ms'});
@@ -1966,7 +2031,7 @@ renderTitle();
 })();
 
 /* test hook (no effect on play) */
-window.__sotsu={EVENTS:EVENTS,showEvent:showEvent,showIncident:showIncident,INCIDENTS:INCIDENTS,mark:mark,rollHidden:rollHidden,HIDDEN_P:HIDDEN_P,cine:cine,labScene:labScene,submitScene:submitScene,eventScene:eventScene,judge:judge,endGame:endGame,newGame:newGame,labs:LABS,get state(){return S},get lab(){return L}};
+window.__sotsu={xLen:xLen,pickHL:pickHL,EVENTS:EVENTS,showEvent:showEvent,showIncident:showIncident,INCIDENTS:INCIDENTS,mark:mark,rollHidden:rollHidden,HIDDEN_P:HIDDEN_P,cine:cine,labScene:labScene,submitScene:submitScene,eventScene:eventScene,judge:judge,endGame:endGame,newGame:newGame,labs:LABS,get state(){return S},get lab(){return L}};
 })();
 </script>
 </body>
