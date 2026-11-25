@@ -548,7 +548,8 @@ var ENDINGS=[
   {id:'letter',rank:'?',stamp:'恋',em:'💘',title:'ラブレター受理',good:1,hidden:1,desc:function(){return '提出したのは、卒論ではなくラブレターだった。図書館のいつもの席の人が、真っ赤な顔で受け取った。返事は「はい」。卒論は、また来週。'}},
   {id:'okan',rank:'?',stamp:'母',em:'🍙',title:'母が代理提出',good:1,hidden:1,desc:function(){return '窓口に現れたのは、母だった。卒論と一緒に、米5キロを置いていった。「うちの子がお世話になっております」。なぜか受理された。'}},
   {id:'aigrad',rank:'?',stamp:'AI',em:'🤖',title:'AIが首席卒業',good:1,hidden:1,desc:function(){return '提出した卒論は、AIが書いた部分のほうが高く評価された。首席はAI。あなたは「ご協力ありがとうございました」と言われた。'}},
-  {id:'nobel',rank:'?',stamp:'賞',em:'🏅',title:'世紀の大発見(誤)',good:1,hidden:1,desc:function(){return '実験室の観葉植物の世話が、なぜか世界的な大発見だった。ストックホルムから電話が来た。卒論は、まだ書いていない。'}}
+  {id:'nobel',rank:'?',stamp:'賞',em:'🏅',title:'世紀の大発見(誤)',good:1,hidden:1,desc:function(){return '実験室の観葉植物の世話が、なぜか世界的な大発見だった。ストックホルムから電話が来た。卒論は、まだ書いていない。'}},
+  {id:'nature',rank:'?',stamp:'掲',em:'📰',title:'ネイチャー掲載',good:1,hidden:1,desc:function(){return '提出した卒論が、そのまま世界的な科学雑誌に掲載された。査読者は一言、「新規性は、ある」。教授が、いちばん驚いている。'}}
 ];
 /* 隠しエンディング:提出まで進んだとき、条件つきでごくまれに起きる(猫の入力を採用した/午前2時に乗った) */
 var HIDDEN_RULES=[
@@ -557,9 +558,10 @@ var HIDDEN_RULES=[
   {id:'letter',need:function(m){return m.letter}},     /* ラブレターを書いた */
   {id:'okan',need:function(m){return m.parent}},       /* 母に長文を返信した */
   {id:'aigrad',need:function(m){return m.ai}},         /* AIに全部書かせた */
-  {id:'nobel',need:function(m){return m.breakthrough}} /* 実験で予想と真逆の結果が出た */
+  {id:'nobel',need:function(m){return m.breakthrough}}, /* 実験で予想と真逆の結果が出た */
+  {id:'nature',need:function(m){return m.novel&&S.q>=60}} /* 「新規性がある」ことにして、研究の質も高い */
 ];
-var HIDDEN_P={neko:0.01,uchu:0.01,letter:0.01,okan:0.01,aigrad:0.01,nobel:0.01};
+var HIDDEN_P={neko:0.01,uchu:0.01,letter:0.01,okan:0.01,aigrad:0.01,nobel:0.01,nature:0.01};
 function rollHidden(id){
   if(!S||id==='blank'||id==='burnout')return null;
   var m=S.marks||{},order=shuffle(HIDDEN_RULES);
@@ -1203,7 +1205,8 @@ function submitScene(id){
     letter:['……これは、ご提出書類ではなく、お手紙のようですが。','お預かりします。(顔が赤い)','tilt','受理(?)'],
     okan:['……あの、そちらの方は?','いつもお世話になっております。受理します(米つき)。','bow','受理'],
     aigrad:['……これは、どなたの原稿でしょうか。','受理します。署名はAIでよろしいですか。','tilt','受理'],
-    nobel:['……ストックホルムから、お電話です。','受理します。いや、受理というか。','nod','受理']
+    nobel:['……ストックホルムから、お電話です。','受理します。いや、受理というか。','nod','受理'],
+    nature:['……あの、掲載通知のほうが、先に届いているのですが。','受理します。……受理というか、おめでとうございます。','nod','受理']
   };
   if(id==='repeat'){
     sp.dur=4.4;sp.keys=[[0,'shot','wide'],[0.3,'anim','shake'],[0.4,'say','本日の受付は、終了しました。',2.2],[1.6,'shutter',1.3],[3.0,'shot','full']];
@@ -1355,7 +1358,8 @@ var STYLE_BY_END={
   letter:'卒論の体裁のまま、中身がラブレターになっている。図書館のいつもの席の人への気持ちが、方法・結果・考察に入り込む。',
   okan:'母が代理で提出した体裁。母の口調で「ちゃんと食べてる?」が研究の主要な変数になる。',
   aigrad:'著者がAI。「ご質問ありがとうございます」で始まり、「他にお手伝いできることはありますか?」で終わる。',
-  nobel:'予想外の結果が大発見になった体裁。受賞理由が、実験室の観葉植物の世話になっている。'
+  nobel:'予想外の結果が大発見になった体裁。受賞理由が、実験室の観葉植物の世話になっている。',
+  nature:'世界的な科学雑誌に掲載された体裁。査読コメントが付き、「新規性はある」「図がきれい」と評される。なぜ採択されたのかは、筆者にもわからない。'
 };
 
 /* ---------- mock thesis generator (no AI) ----------
@@ -1640,6 +1644,19 @@ function makeThesis(o){
     sec(H[5],['卒論の続きは、授賞式のあとで書く。']);
     sec(H[6],['実験室の観葉植物に感謝する。毎日、水をやっただけである。']);
     d.tail='(受賞理由:観葉植物の世話)';
+  }else if(id==='nature'){
+    d.sub='—採択通知つき—';
+    sec(H[0],F(['本研究は、{AB}について{C}を行い、新規性があることを明らかにしたものである。','なお、新規性があることは、査読者が確認した。']));
+    sec(H[1],F(['{AB}は、これまでほとんど研究されてこなかった(筆者が検索した範囲では)。','「新規性がある」と書いたら、誰も反論しなかった。']));
+    sec(H[2],F(['対象は{A}から{n}名。','結果は、ほぼ再現した。']));
+    var rt=sec(H[3],F(['{B}は、{peak}に最大値を示した。','査読者:「図がきれい」。']));
+    rt.fig=f('図1 {cor}と{B}の関係(カラー版)');
+    sec('査読コメント',[],['査読者1:新規性は、ある。','査読者2:再現性は、ある気がする。','査読者3:図が、きれい。(採択)']);
+    sec(H[4],F(['この結果は、{AB}に関する従来の理解を、一部、更新する。','ただし、なぜ採択されたのかは、筆者にもわからない。']));
+    sec(H[5],['本研究が、世界のどこかの研究室の、卒論のヒントになれば幸いである。']);
+    sec(H[6],[sur+'先生は、掲載通知のメールを、3回読み返していた。']);
+    sec(H[7],[],['[1] 筆者(2026)本稿.世界的な科学雑誌(号数未定).掲載済み。']);
+    d.tail='(掲載料:別途請求)';
   }else if(id==='graduate'){
     sec(H[0],abs);
     sec(H[1],intro);
@@ -1708,6 +1725,7 @@ function makeThesis(o){
   if(id==='okan')d.meta[1]='提出者:母(代理) / 指導教員:'+sur+'先生(恐縮)';
   if(id==='aigrad')d.meta[1]='提出者:AI(首席) / 共著者:あなた(補欠)';
   if(id==='nobel')d.meta[1]='提出者:あなた(困惑) / 指導教員:'+sur+'先生(電話に出ている)';
+  if(id==='nature')d.meta[1]='提出者:あなた(困惑) / 指導教員:'+sur+'先生(いちばん驚いている)';
   if(!good&&!special)d.meta.push('カオス度 '+stars(o.chaos||0));
   return d;
 }
@@ -1859,7 +1877,7 @@ renderTitle();
   if(!m||!END_BY_ID[m[1]]||!END_BY_ID[m[1]].hidden)return;
   window.__noCine=true;
   newGame('深夜のコンビニにおける財布の残高の比較','normal','佐藤');
-  Object.assign(S,{chars:10300,q:60,trust:55,san:50,sleeps:4,minSan:25,marks:{cat:1,night:1,letter:1,parent:1,ai:1,breakthrough:1}});
+  Object.assign(S,{chars:10300,q:60,trust:55,san:50,sleeps:4,minSan:25,marks:{cat:1,night:1,letter:1,parent:1,ai:1,breakthrough:1,novel:1}});
   endGame(m[1],0,{preview:true});
 })();
 
