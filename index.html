@@ -542,7 +542,7 @@ var END_BY_ID={};ENDINGS.forEach(function(e){END_BY_ID[e.id]=e});
 
 /* ---------- ラボ配属ガチャ ----------
    最初に研究室を引き、先生の厳しさと研究室の空気を決める。研究室・先生はすべて架空 */
-var LAB_BASE={san:70,trust:40,q:10,tg:1,qg:1,ask:0.6,askQ:1,absent:0,detect:0.4,susT:35,mercy:65,exTrust:60,wm:1,wc:0,night:0};
+var LAB_BASE={san:70,trust:40,q:10,tg:1,qg:1,ask:0.6,askQ:1,absent:0,detect:0.4,susT:35,mercy:65,exTrust:70,wm:1,wc:0,night:0};
 var LABS=[
   {id:'hotoke',rar:'SSR',w:6,em:'🪷',name:'仏',prof:'何を出しても「いいね」と言う先生',strict:1,
     desc:'相談すればだいたい褒めてもらえる。締切だけは延びない。',
@@ -553,7 +553,7 @@ var LABS=[
     desc:'褒められることはまずない。ただ、相談するたびに確実に良くなる。',
     fx:['相談の成功率が低い(40%)','相談で研究の質が大きく上がる','信頼が上がりにくい・初期信頼30','不正はすぐ見抜かれる','温情はほぼ期待できない'],
     ack:'毎回の原稿を真っ赤にして返してくださった指導教員に感謝する。',
-    m:{trust:30,tg:0.7,qg:1.1,ask:0.4,askQ:1.6,detect:0.8,susT:55,mercy:75,exTrust:55}},
+    m:{trust:30,tg:0.7,qg:1.1,ask:0.4,askQ:1.6,detect:0.8,susT:55,mercy:75,exTrust:62}},
   {id:'taiiku',rar:'SR',w:10,em:'💪',name:'体育会系',prof:'「気合いで書け」が口ぐせの先生',strict:4,
     desc:'書く量は増えるが、消耗も激しい。',
     fx:['書ける字数が1.2倍','書くたびに正気度が余分に減る'],
@@ -1101,8 +1101,8 @@ function judge(early){
   if(S.chars<1000)return 'blank';
   if(S.sus>=1&&S.trust<L.susT)return 'sus';
   if(S.chars>=GOAL){
-    if(early>=2&&S.q>=65&&S.trust>=50)return 'early';
-    if(S.q>=70&&S.trust>=L.exTrust)return 'excellent';
+    if(early>=2&&S.q>=72&&S.trust>=60&&S.sus===0)return 'early';
+    if(S.q>=80&&S.trust>=L.exTrust&&S.sus===0)return 'excellent';
     if(S.q>=45)return 'graduate';
     return 'charsonly';
   }
@@ -1393,12 +1393,12 @@ function chaosify(d,o,R,P,tp){
 
 /* 主な発見のパターン。卒論ごとに1つ選ぶ */
 var FINDINGS=[
-  {res:'{B}は締切が近づくほど{増加|乱高下}し、とくに午前2時に特異的な値を示した',why:'締切',peak:'午前2時',cor:'締切までの残り日数',fut:'締切のない世界での追試'},
-  {res:'{B}は曜日によって約{3|2.5|4}倍変動し、月曜日に最小、金曜日の夕方に最大となった',why:'曜日',peak:'金曜日の夕方',cor:'週末までの残り時間',fut:'祝日のある週での追試'},
+  {res:'{B}は締切が近づくほど{増加|乱高下}し、とくに午前2時に特異的な値を示した',why:'締切',peak:'午前2時',cor:'締切までの残り日数',fut:'締切のない世界での追試',ser:1},
+  {res:'{B}は曜日によって約{3|2.5|4}倍変動し、月曜日に最小、金曜日の夕方に最大となった',why:'曜日',peak:'金曜日の夕方',cor:'週末までの残り時間',fut:'祝日のある週での追試',ser:1},
   {res:'{B}は気温や湿度とはほとんど関係せず、筆者の機嫌と最も強く相関した',why:'筆者の機嫌',peak:'筆者の機嫌がよい日',cor:'筆者の機嫌(自己評価)',fut:'機嫌のよい研究者による追試'},
   {res:'{B}は、観測者が見ているときにだけ有意に増加した',why:'見られていること',peak:'見られているとき',cor:'観測者との距離',fut:'誰も見ていないところでの追試(原理的に困難)'},
-  {res:'{B}はコーヒーの摂取量に比例して増加し、3杯目を境に急激に低下した',why:'コーヒー',peak:'2杯目と3杯目のあいだ',cor:'コーヒーの杯数',fut:'デカフェによる追試'},
-  {res:'{B}は雨の日にだけ{増加|減少}し、晴れの日にはほとんど変化しなかった',why:'雨',peak:'雨の日',cor:'降水量',fut:'梅雨の時期の追試'}
+  {res:'{B}はコーヒーの摂取量に比例して増加し、3杯目を境に急激に低下した',why:'コーヒー',peak:'2杯目と3杯目のあいだ',cor:'コーヒーの杯数',fut:'デカフェによる追試',ser:1},
+  {res:'{B}は雨の日にだけ{増加|減少}し、晴れの日にはほとんど変化しなかった',why:'雨',peak:'雨の日',cor:'降水量',fut:'梅雨の時期の追試',ser:1}
 ];
 
 function makeThesis(o){
@@ -1413,7 +1413,9 @@ function makeThesis(o){
     sleeps:st.sleeps||0,writes:st.writes||0,minSan:st.minSan==null?100:st.minSan,cut:st.cut||0,backups:st.backups||0,
     early:o.early||0,sur:sur,unit:P(['点','回','分','pt','単位(仮)','B値']),
     p:o.q<30?'p ≈ 0.05くらい':'p = '+P(['0.003','0.012','0.021','0.034','0.049'])};
-  var FD=FINDINGS[Math.floor(R()*FINDINGS.length)];
+  var good=id==='early'||id==='excellent';
+  var FPOOL=good?FINDINGS.filter(function(x){return x.ser}):FINDINGS;
+  var FD=FPOOL[Math.floor(R()*FPOOL.length)];
   V.why=FD.why;V.peak=FD.peak;V.cor=FD.cor;V.fut=FD.fut;
   function f(s){
     s=s.replace(/\{res\}/g,FD.res);
@@ -1469,19 +1471,53 @@ function makeThesis(o){
   var d={title:tp.full,sub:'',secs:[],tail:'',table:null,fig:null,refs:null,red:[]};
   function sec(h,p,li){var x={h:h,p:p||[],li:li||null};d.secs.push(x);return x}
   var H=['要旨','1 はじめに','2 方法','3 結果','4 考察','5 おわりに','謝辞','参考文献'];
-  var good=id==='early'||id==='excellent';
 
-  if(good||id==='graduate'){
-    if(good)d.sub=f('—締切前10日間の{参与観察|定量的調査|記録}から—');
+  if(good){
+    /* 優秀・早期提出:ちゃんとした論文。誤字・崩れ・冗談は入れない */
+    V.imp=P(['今後の調査設計','対照条件の設定のしかた','日常の行動選択の理解']);
+    V.eff=P(['中程度(d = 0.5)','中〜大(d = 0.7)','大(d = 0.9)']);
+    V.unit='点';V.sd=(N(3,12)/10).toFixed(1);
+    d.sub=f('—締切前10日間の定量的記録から—');
+    sec(H[0],F(['本研究は、{AB}について、10日間の記録をもとに{C}を行ったものである。',
+      '{n}名を対象に調べた結果、{res}({p})。効果量は{eff}であった。',
+      '以上より、{AB}には{why}が関与することが示された。本知見は、{imp}に資するものと考える。']));
+    sec(H[1],F(['{AB}は、日常的でありながら、これまで十分に整理されてこなかった。',
+      '先行する報告は全体の傾向を示すにとどまり、{why}との関係を条件ごとに比べた例は限られている。',
+      'そこで本研究は、{AB}と{why}の関係を、同一の対象について継続的に記録して明らかにすることを目的とした。',
+      '仮説1:{B}は{why}によって変化する。仮説2:その変化は{peak}で最も大きい。']));
+    sec(H[2],F(['対象は{A}から募った{n}名とした。調査期間は10日間であった。',
+      '{B}は毎日同じ時刻に、同じ手順で記録した。記録は紙とスマートフォンの二重で行い、毎晩保存した。',
+      '解析には分散分析と相関分析を用い、有意水準は5%とした。効果量も併せて算出した。']));
+    var base_=N(20,60)/10;
+    var tabS={cap:f('表1 {AB}の条件別の値(n = {n})'),head:['条件',B+'(平均)','基準条件との差'],
+      rows:[['基準条件',base_.toFixed(1),'—'],['中間条件',(base_*1.3).toFixed(1),'+30%'],[FD.peak,(base_*1.8).toFixed(1),'+80%']]};
+    var r3=sec(H[3],F(['{B}の平均値は{m}±{sd}{unit}であった(表1)。',
+      '条件間に有意な差がみられ({p})、仮説1は支持された。',
+      '詳しくみると、{B}は{peak}に最大値を示し、{cor}と強い相関がみられた(r = 0.{rr}, n = {n})。仮説2も支持された(図1)。']));
+    r3.table=tabS;r3.fig=f('図1 {cor}と{B}の関係(平均値。バーは標準偏差)');
+    sec(H[4],F(['この結果は、{AB}が{why}の影響を受けることを示している。',
+      'とくに{peak}で変化が大きかった点は、{why}が{B}に及ぼす作用が一様でないことを示唆する。',
+      '先行する報告と方向は一致しており、本研究は条件を分けて検討した点に新しさがある。',
+      '一方で、対象が{A}に限られる点と、期間が10日間と短い点は、本研究の限界である。今後は、期間と対象を広げた追試によって、一般化の範囲を確かめたい。']));
+    var c5=F(['本研究では、{AB}について{C}を行い、{why}と{B}の関係を明らかにした。','{B}は{why}の影響を受け、とくに{peak}で変化が大きいことが示された。']);
+    c5.push(id==='early'?f('なお、本稿は締切の{early}日前に提出された。'):f('本研究が、{imp}の一助となれば幸いである。'));
+    sec(H[5],c5);
+    var ackG=ACK+(V.cut>0?f('加えて、{cut}字ぶんの赤ペンを入れてくださった先生の添削に、改めて感謝する。'):'');
+    sec(H[6],[ackG]);
+    sec(H[7],[],[f('[1] 研究室内資料(2025)『{B}に関する予備調査』{sur}研究室.'),'[2] 研究室の過去の卒業論文(複数).研究室共有フォルダ.','[3] 本研究の記録(2026)手書きノートおよびスマートフォンのメモ.']);
+    if(id==='excellent'){
+      var VERD={oni:'……悪くない。この水準を、最初から出せ。',hotoke:'すばらしい。大学院に来てほしい。',taiiku:'気合いの入った、堂々たる論文である!',
+        core:'提出は朝9時ちょうど。内容も時間も、完璧である。',absent:'(出張先で読了)ここまで仕上げるとは思わなかった。',
+        yuru:'うん、いいんじゃない? ……いや、本当によくできてる。',normal:'論旨が明快で、考察も的確である。優秀卒論賞に推薦する。'};
+      sec('指導教員のコメント',[(VERD[lab.id]||VERD.normal)]);
+    }
+  }else if(id==='graduate'){
     sec(H[0],abs);
-    sec(H[1],intro.concat(good?hypo:[]));
-    sec(H[2],good?method:method.slice(0,3));
-    var r3=sec(H[3],good?result:result.slice(0,2));r3.table=table;r3.fig=fig;
-    sec(H[4],disc.slice(0,good?3:2).concat(notes.slice(0,good?4:2)));
-    var c5=concl.slice();
-    if(id==='early')c5.push(f('なお、本稿は締切の{early}日前に提出された。締切は、守れる。'));
-    if(id==='excellent')c5.push('本研究が、同じく締切に追われるすべての学生の役に立てば幸いである。');
-    sec(H[5],c5);sec(H[6],[ACK]);sec(H[7],[],REFS);
+    sec(H[1],intro);
+    sec(H[2],method.slice(0,3));
+    var r3g=sec(H[3],result.slice(0,2));r3g.table=table;r3g.fig=fig;
+    sec(H[4],disc.slice(0,2).concat(notes.slice(0,2)));
+    sec(H[5],concl);sec(H[6],[ACK]);sec(H[7],[],REFS);
   }else if(id==='charsonly'){
     d.title=tp.full+'に関する研究についての一考察(増補版)';
     sec(H[0],pad(abs.slice(0,2)));sec(H[1],pad(intro.slice(0,3)));sec(H[2],pad(method.slice(0,2)));
@@ -1526,7 +1562,7 @@ function makeThesis(o){
 
   /* ---- 赤ペン:段落のうしろに、研究室の口調でコメントを入れる ---- */
   var redPool=RED[lab.id]||RED.normal;
-  var redN=lab.id==='hotoke'?3:lab.id==='absent'?1:Math.max(0,Math.min(5,Math.round((100-o.q)/22)));
+  var redN=good?0:lab.id==='hotoke'?3:lab.id==='absent'?1:Math.max(0,Math.min(5,Math.round((100-o.q)/22)));
   if(id==='blank')redN=Math.min(redN,1);
   var cand=d.secs.filter(function(x){return x.p.length&&x.h!=='謝辞'&&x.h!=='参考文献'});
   for(var k=0;k<redN&&cand.length;k++){
@@ -1534,9 +1570,10 @@ function makeThesis(o){
     (target.red=target.red||[]).push(P(redPool));
   }
 
-  chaosify(d,o,R,P,{has:true,core:B});
+  if(!good)chaosify(d,o,R,P,{has:true,core:B});
   d.meta=['〇〇大学 〇〇学部 4年 '+sur+'研究室','提出者:あなた / 指導教員:'+sur+'先生',
-    'ゲーム内の字数 '+fmt(o.chars)+'字 ・ '+o.title+'('+o.score+'点)','カオス度 '+stars(o.chaos||0)];
+    'ゲーム内の字数 '+fmt(o.chars)+'字 ・ '+o.title+'('+o.score+'点)'];
+  if(!good)d.meta.push('カオス度 '+stars(o.chaos||0));
   return d;
 }
 
