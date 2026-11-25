@@ -216,6 +216,9 @@ details.box textarea{width:100%;height:150px;margin-top:8px;font:inherit;font-si
 .unsaved{margin-left:auto;border:2px solid var(--ink);background:var(--card);border-radius:6px;font-size:11px;font-weight:900;padding:1px 7px;color:var(--ink)}
 .unsaved.warn{background:var(--pen);border-color:var(--pen);color:#fff}
 .helptip{font-size:12.5px;font-weight:700;line-height:1.55;background:var(--marker);border:2px solid var(--ink);border-radius:8px;padding:8px 10px;cursor:pointer}
+.nohit{font:inherit;font-size:11px;font-weight:900;border:2px solid var(--ink);background:var(--marker);color:var(--ink);border-radius:6px;padding:0 6px;margin-left:4px}
+.nohit.hit{background:var(--pen);border-color:var(--pen);color:#fff}
+.sc-near{font-size:13px;font-weight:900;color:var(--pen)}
 .card.incident{border-color:var(--pen);box-shadow:5px 5px 0 var(--pen)}
 
 .tform{border:0;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
@@ -399,22 +402,23 @@ var ACT_RUN={
 
 /* 行動のあとに、たまに起きるハプニング(1日1回まで)。未保存の原稿は消えることがある */
 var INCIDENTS=[
-  {w:3,em:'💻',title:'PCが突然フリーズした',run:function(){
-    var u=S.chars-S.saved;if(u<=0)return {t:'再起動した。保存してあったので、何も失わなかった。',fx:{s:-2}};
-    var lose=Math.round(u*(0.6+Math.random()*0.4));mark('lost');
-    return {t:'再起動したら、最後に保存した時点に戻っていた。'+fmt(lose)+'字が消えた。',fx:{c:-lose,s:-12}};
+  {w:3,em:'💻',title:'PCが突然フリーズした',
+    avoid:function(){return S.chars-S.saved<=0?{t:'再起動した。保存してあったので、何も失わなかった。',fx:{s:-2}}:null},
+    run:function(){
+      var u=S.chars-S.saved,lose=Math.round(u*(0.6+Math.random()*0.4));mark('lost');
+      return {t:'再起動したら、最後に保存した時点に戻っていた。'+fmt(lose)+'字が消えた。',fx:{c:-lose,s:-12}};
   }},
-  {w:1,em:'🔌',title:'足がケーブルに引っかかった',run:function(){
-    var u=S.chars-S.saved;if(u<=0)return {t:'電源が抜けた。でも保存してあった。昨日の自分、えらい。',fx:{}};
-    mark('lost');return {t:'電源が抜けて、画面が真っ暗になった。保存していない分は、全部消えた。',fx:{c:-u,s:-15}};
-  }},
-  {w:2,em:'☕',title:'コーヒーをキーボードにこぼした',run:function(){mark('coffee');return {t:'キーボードの「の」が反応しなくなった。正気度が少し削れた。',fx:{s:-8}}}},
+  {w:1,em:'🔌',title:'足がケーブルに引っかかった',
+    avoid:function(){return S.chars-S.saved<=0?{t:'電源が抜けた。でも保存してあった。昨日の自分、えらい。',fx:{}}:null},
+    run:function(){var u=S.chars-S.saved;mark('lost');return {t:'電源が抜けて、画面が真っ暗になった。保存していない分は、全部消えた。',fx:{c:-u,s:-15}}}},
+  {w:2,em:'☕',title:'コーヒーをキーボードにこぼした',
+    avoid:function(){return S.san>=40?{t:'とっさにカップを押さえた。反射神経はまだ死んでいない。',fx:{}}:null},
+    run:function(){mark('coffee');return {t:'疲れて手元が狂った。キーボードの「の」が反応しなくなった。',fx:{s:-8}}}},
   {w:2,em:'💡',title:'シャワー中にひらめいた',run:function(){return {t:'考察の続きが、急に全部見えた。忘れないうちに書いた。',fx:{c:rand(250,450),q:3}}}},
   {w:2,em:'🍙',title:'先輩が差し入れをくれた',run:function(){return {t:'おにぎりと、「大丈夫、みんな通った道だから」の一言。',fx:{s:12}}}},
-  {w:2,em:'🚪',title:'教授が抜き打ちで覗きに来た',run:function(){
-    if(S.q>=40)return {t:'画面を見て「お、進んでるね」と言って去っていった。',fx:{t:8}};
-    return {t:'画面を見て、何も言わずに去っていった。それが一番こわい。',fx:{t:-8,s:-5}};
-  }},
+  {w:2,em:'🚪',title:'教授が抜き打ちで覗きに来た',
+    avoid:function(){return S.q>=40?{t:'画面を見て「お、進んでるね」と言って去っていった。',fx:{t:8}}:null},
+    run:function(){mark('visit');return {t:'画面を見て、何も言わずに去っていった。それが一番こわい。',fx:{t:-8,s:-5}}}},
   {w:1,em:'☁️',title:'自動バックアップが動いていた',run:function(){return {t:'知らないうちにクラウドに全部保存されていた。テクノロジーに感謝。',fx:{save:1}}}},
   {w:1,em:'🐈',title:'猫が膝に乗ってきた',run:function(){mark('cat');return {t:'猫が動くまで、何もできない。それでいい。',fx:{s:8,c:60}}}}
 ];
@@ -432,13 +436,15 @@ var EVENTS=[
   {id:'word',em:'💾',tag:'トラブル',title:'Wordが突然フリーズした',body:'「応答なし」の文字。最後に保存したのはいつだったか。',choices:[
     {label:'自動回復に祈る',run:function(){
       if(chance(0.45))return {t:'回復ペインに全文が残っていた。神に感謝した。',fx:{save:1}};
-      var u=S.chars-S.saved;mark('lost');
+      var u=S.chars-S.saved;
       if(u<=0)return {t:'祈りは届かなかった。でも保存してあったので無事だった。',fx:{s:-4}};
+      mark('lost');
       return {t:'祈りは届かなかった。最後の保存から先、'+fmt(u)+'字が消えた。',fx:{c:-u,s:-14}};
     }},
     {label:'最後に保存した版から復元',run:function(){
       var u=S.chars-S.saved;
       if(u<=0)return {t:'保存した版に戻した。何も失わなかった。',fx:{s:-2}};
+      mark('lost');
       return {t:'保存した版には戻せた。そのあと書いた'+fmt(u)+'字は、なかったことにする。',fx:{c:-Math.round(u*0.8),s:-4}};
     }}]},
   {id:'nomi',em:'🍻',tag:'誘惑',title:'同期から飲みの誘い',body:'「息抜きしようぜ」の一言が、悪魔の囁きに聞こえる。',choices:[
@@ -536,8 +542,19 @@ var ENDINGS=[
   {id:'repeat',rank:'D',stamp:'不',em:'📉',title:'留年',good:0,desc:function(c){return 'あと'+fmt(c.short)+'字。提出ボタンの前で時間切れ。来年の自分に託した。'}},
   {id:'sus',rank:'F',stamp:'疑',em:'🚨',title:'研究室に呼び出し',good:0,desc:function(){return '「ちょっと来て」というメールが届いた。用件は書かれていない。'}},
   {id:'burnout',rank:'F',stamp:'休',em:'💀',title:'燃え尽きて休学',good:0,desc:function(){return '気づいたら実家の天井を見ていた。休学届は今度書く。'}},
-  {id:'blank',rank:'F',stamp:'白',em:'🫥',title:'白紙提出',good:0,desc:function(){return '表紙だけ提出した。タイトルは立派だった。'}}
+  {id:'blank',rank:'F',stamp:'白',em:'🫥',title:'白紙提出',good:0,desc:function(){return '表紙だけ提出した。タイトルは立派だった。'}},
+  {id:'neko',rank:'?',stamp:'猫',em:'🐈',title:'猫が卒業',good:1,hidden:1,desc:function(){return '提出した卒論の著者欄が、いつのまにか猫になっていた。学位記は猫の名前で届いた。おめでとう、ミケ。'}},
+  {id:'uchu',rank:'?',stamp:'宇',em:'🛸',title:'星間査読',good:1,hidden:1,desc:function(){return '提出した卒論に、地球外から査読コメントが届いた。判定は「軽微な修正で受理」。卒業は……まあ、たぶん大丈夫。'}}
 ];
+/* 隠しエンディング:提出まで進んだとき、条件つきでごくまれに起きる(猫の入力を採用した/午前2時に乗った) */
+var HIDDEN_P={neko:0.01,uchu:0.01};
+function rollHidden(id){
+  if(!S||id==='blank'||id==='burnout')return null;
+  var m=S.marks||{};
+  if(m.cat&&Math.random()<HIDDEN_P.neko)return 'neko';
+  if(m.night&&Math.random()<HIDDEN_P.uchu)return 'uchu';
+  return null;
+}
 var END_BY_ID={};ENDINGS.forEach(function(e){END_BY_ID[e.id]=e});
 
 /* ---------- ラボ配属ガチャ ----------
@@ -611,7 +628,9 @@ function makeTitle(p){
 }
 
 /* プレイ中の事件の痕跡。模擬卒論にそのまま残る */
-function mark(k){if(S){S.marks[k]=(S.marks[k]||0)+1}}
+/* 被弾:食らうと優秀卒論賞・早期提出が取れなくなるハプニング */
+var HARM={lost:1,coffee:1,down:1,toc:1,visit:1};
+function mark(k){if(S){S.marks[k]=(S.marks[k]||0)+1;if(HARM[k])S.hits=(S.hits||0)+1}}
 function chaosLevel(){
   var pts=0;for(var k in S.marks)pts+=S.marks[k];
   pts+=Math.floor((S.crazyN||0)/10)+(S.san<20?1:0)+S.sus*2;
@@ -621,7 +640,7 @@ function chaosLevel(){
 function newGame(theme,labId,sur){
   L=labOf(labId,sur);
   if(!S_TITLE||S_TITLE.full!==theme)S_TITLE={full:theme||''};
-  S={day:1,ap:AP_PER_DAY,chars:0,san:L.san,trust:L.trust,q:L.q,sus:0,boost:false,down:false,lab:L.lab.id,sur:L.sur,marks:{},scraps:[],crazyN:0,saved:0,incToday:false,cut:0,minSan:100,writes:0,sleeps:0,coffee:0,backups:0,dayLog:[],theme:theme||'',queue:shuffle(EVENTS).slice(0,DAYS-1)};
+  S={day:1,ap:AP_PER_DAY,chars:0,san:L.san,trust:L.trust,q:L.q,sus:0,boost:false,down:false,lab:L.lab.id,sur:L.sur,marks:{},scraps:[],crazyN:0,saved:0,hits:0,dodged:0,incToday:false,cut:0,minSan:100,writes:0,sleeps:0,coffee:0,backups:0,dayLog:[],theme:theme||'',queue:shuffle(EVENTS).slice(0,DAYS-1)};
   hist=[];
 }
 
@@ -660,15 +679,21 @@ function apply(fx,em){
 /* ---------- rendering ---------- */
 function setRoot(html){root.innerHTML=html;window.scrollTo(0,0)}
 
+function endCounts(got){
+  var nN=0,nH=0,gN=0,gH=0;
+  ENDINGS.forEach(function(e){if(e.hidden)nH++;else nN++});
+  got.forEach(function(id){var e=END_BY_ID[id];if(!e)return;if(e.hidden)gH++;else gN++});
+  return gN+'/'+nN+' ・ 隠し '+gH+'/'+nH;
+}
 function collectionHTML(){
   var got=loadEnd();
   var items=ENDINGS.map(function(e){
     if(got.indexOf(e.id)>=0){
-      return '<li><span class="ce">'+e.em+'</span><div><div class="cn">'+e.title+'(ランク'+e.rank+')</div><div class="cd">'+esc(e.desc({early:2,short:1234}))+'</div></div></li>';
+      return '<li><span class="ce">'+e.em+'</span><div><div class="cn">'+e.title+(e.hidden?'(隠し)':'(ランク'+e.rank+')')+'</div><div class="cd">'+esc(e.desc({early:2,short:1234}))+'</div></div></li>';
     }
-    return '<li class="lock"><span class="ce">❔</span><div><div class="cn">？？？</div><div class="cd">まだ見ていない結末</div></div></li>';
+    return '<li class="lock"><span class="ce">❔</span><div><div class="cn">？？？</div><div class="cd">'+(e.hidden?'隠しエンディング。条件は不明。めったに出ない。':'まだ見ていない結末')+'</div></div></li>';
   }).join('');
-  return '<div class="coll"><h3>エンディング図鑑 '+got.length+'/'+ENDINGS.length+'</h3><ul>'+items+'</ul></div>';
+  return '<div class="coll"><h3>エンディング図鑑 '+endCounts(got)+'</h3><ul>'+items+'</ul></div>';
 }
 
 function renderTitle(){
@@ -678,7 +703,7 @@ function renderTitle(){
       '<div class="filetab"><i></i><span>卒論_最終_本当に最終.docx - 保存されていません</span></div>'+
       '<div class="hero"><h1><span class="t1">卒論</span><span class="t2">ギリギリ</span><span class="t3">シミュレーター</span></h1><div class="maru" aria-hidden="true">〆</div></div>'+
       '<div class="deadline"><span>提出まで</span><b>あと10日</b></div>'+
-      '<div class="how"><div><b>10日で1万字。</b>1日2回動ける。</div><div>研究の質が高いほど速く書ける。教授は4日目と8日目に赤ペンを入れてくる。</div><div>事件とハプニングは突然に。寝る前の保存を忘れずに。</div></div>'+
+      '<div class="how"><div><b>10日で1万字。</b>1日2回動ける。</div><div>研究の質が高いほど速く書ける。教授は4日目と8日目に赤ペンを入れてくる。</div><div>事件とハプニングは突然に。1つも食らわなければ、優秀卒論賞のチャンス。</div></div>'+
       '<fieldset class="tform"><legend class="lbl">卒論のタイトル(結果と模擬卒論に載ります)</legend>'+
         '<div class="trow"><input class="inp" id="ta" type="text" maxlength="14" autocomplete="off" aria-label="対象(〇〇)" placeholder="'+esc(pick(EX_A))+'" value="'+esc(TP.a)+'"><span>における</span></div>'+
         '<div class="trow"><input class="inp" id="tb" type="text" maxlength="14" autocomplete="off" aria-label="テーマ(△△)" placeholder="'+esc(pick(EX_B))+'" value="'+esc(TP.b)+'"><span>の</span></div>'+
@@ -686,7 +711,7 @@ function renderTitle(){
         '<p class="tprev" id="tprev"></p>'+
       '</fieldset>'+
       '<button class="btn primary" id="start" type="button">書きはじめる</button>'+
-      '<p class="coll-note">エンディング '+got.length+'/'+ENDINGS.length+' を回収済み</p>'+
+      '<p class="coll-note">エンディング '+endCounts(got)+' を回収済み</p>'+
       '<details class="box" id="colld"><summary>図鑑を見る</summary><div style="margin-top:10px">'+collectionHTML()+'</div></details>'+
     '</main>'
   );
@@ -801,6 +826,7 @@ function updateHUD(){
   for(var i=0;i<segs.length;i++)segs[i].className=i<n?'on':'';
   var ap='<span>行動</span>';
   for(var k=0;k<AP_PER_DAY;k++)ap+='<i class="'+(k<S.ap?'':'off')+'"></i>';
+  ap+='<button class="nohit'+(S.hits?' hit':'')+'" type="button" data-help="nohit">'+(S.hits?'被弾 '+S.hits:'無傷')+'</button>';
   $('#ap').innerHTML=ap;
   [['san',S.san],['trust',S.trust],['q',S.q]].forEach(function(p){
     var box=$('#m-'+p[0]);
@@ -824,18 +850,18 @@ var HELP={
   san:'正気度:0になると倒れる(2回目で終わり)。30を切ると書くのが遅くなり、ハプニングも起きやすくなる。寝ると回復。',
   trust:'教授の信頼:相談すると上がるが、研究の質が低いまま行くと下がる。高いと4日目・8日目の赤ペン添削で削られる量が減る。優秀賞や温情に必要。',
   q:'研究の質:文献・実験・相談で上がる。高いほど書く速度が上がり(書くことがある)、実験も成功しやすい。卒業に必要。低いと赤ペン添削で大きく削られる。',
-  unsaved:'未保存の字数:最後のバックアップより後に書いた分。PCのフリーズなどで消えることがある。夜、寝る前にバックアップできる。'
+  unsaved:'未保存の字数:最後のバックアップより後に書いた分。PCのフリーズなどで消えることがある。夜、寝る前にバックアップできる。',
+  nohit:'無傷:PCフリーズでデータが消える、コーヒーをこぼす、倒れる、教授に抜き打ちで見つかる、最終日の目次が壊れる、などの「被弾」がゼロの状態。1つでも食らうと優秀卒論賞と早期提出は取れない。保存しておく、正気度を保つ、研究の質を上げておく、目次は手作業で整える、で避けられる。'
 };
 function wireHelp(){
   var tip=$('#helptip');
-  document.querySelectorAll('#hud [data-help]').forEach(function(b){
-    b.onclick=function(){
-      var k=b.getAttribute('data-help');
-      if(!tip.hidden&&tip.dataset.k===k){tip.hidden=true;return}
-      tip.dataset.k=k;tip.textContent=HELP[k];tip.hidden=false;
-    };
-  });
-  tip.onclick=function(){tip.hidden=true};
+  $('#hud').onclick=function(e){
+    var b=e.target.closest&&e.target.closest('[data-help]');if(!b)return;
+    var k=b.getAttribute('data-help');
+    if(!tip.hidden&&tip.dataset.k===k){tip.hidden=true;return}
+    tip.dataset.k=k;tip.textContent=HELP[k];tip.hidden=false;
+  };
+  tip.onclick=function(e){e.stopPropagation();tip.hidden=true};
 }
 
 function startGame(labId,sur){
@@ -931,11 +957,15 @@ function showResult(text,chips){
 }
 
 function showIncident(inc){
-  var r=inc.run();
+  var av=inc.avoid?inc.avoid():null,r;
+  if(av){r=av;S.dodged++}else r=inc.run();
   var chips=apply(r.fx||{},inc.em);
-  buzz(80);blip(r.fx&&(r.fx.c<0||r.fx.s<0||r.fx.t<0)?160:700,0.15,'square',0.05);
-  var card=el('div','card incident');
-  card.innerHTML='<span class="tag">ハプニング</span><h2 class="ev-title">'+inc.em+' '+esc(inc.title)+'</h2><p class="res-text">'+esc(r.t)+'</p>'+(chips.length?'<div class="chips">'+chips.map(chipHTML).join('')+'</div>':'');
+  if(av)chips.unshift({v:1,label:'回避!'});
+  else if(inc.avoid)chips.push({v:-1,label:'被弾 ×'+S.hits});
+  updateHUD();
+  buzz(80);blip(av?880:(r.fx&&(r.fx.c<0||r.fx.s<0||r.fx.t<0)?160:700),0.15,'square',0.05);
+  var card=el('div','card'+(!av&&inc.avoid?' incident':''));
+  card.innerHTML='<span class="tag">'+(av?'ハプニング回避!':'ハプニング')+'</span><h2 class="ev-title">'+inc.em+' '+esc(inc.title)+'</h2><p class="res-text">'+esc(r.t)+'</p>'+(chips.length?'<div class="chips">'+chips.map(chipHTML).join('')+'</div>':'');
   var info=nextInfo();
   var b=el('button','btn primary');b.type='button';b.textContent=info.label;b.onclick=info.go;
   card.appendChild(b);
@@ -1101,8 +1131,8 @@ function judge(early){
   if(S.chars<1000)return 'blank';
   if(S.sus>=1&&S.trust<L.susT)return 'sus';
   if(S.chars>=GOAL){
-    if(early>=2&&S.q>=72&&S.trust>=60&&S.sus===0)return 'early';
-    if(S.q>=80&&S.trust>=L.exTrust&&S.sus===0)return 'excellent';
+    if(early>=2&&S.q>=72&&S.trust>=60&&S.sus===0&&!S.hits)return 'early';
+    if(S.q>=80&&S.trust>=L.exTrust&&S.sus===0&&!S.hits)return 'excellent';
     if(S.q>=45)return 'graduate';
     return 'charsonly';
   }
@@ -1153,7 +1183,9 @@ function submitScene(id){
     charsonly:['……ずいぶん、分厚いですね。','受理します。','tilt','受理'],
     mercy:['先生から連絡が来ています。','今回だけ、受理します。','nod','受理'],
     blank:['……表紙しか、ありませんが?','これは受理できません。','tilt','不受理'],
-    sus:['……少々お待ちください。','指導教員がお呼びです。こちらへ。','tilt',null]
+    sus:['……少々お待ちください。','指導教員がお呼びです。こちらへ。','tilt',null],
+    neko:['……あの、お名前の欄に、肉球が。','……受理します。','tilt','受理'],
+    uchu:['……窓の外に、見慣れない光が。','受理します。(上から確認が来ています)','nod','受理']
   };
   if(id==='repeat'){
     sp.dur=4.4;sp.keys=[[0,'shot','wide'],[0.3,'anim','shake'],[0.4,'say','本日の受付は、終了しました。',2.2],[1.6,'shutter',1.3],[3.0,'shot','full']];
@@ -1193,23 +1225,25 @@ function finish(submitEarly){
   if(submitEarly&&S.dayLog.length)hist.push(S.dayLog.join(''));
   var early=submitEarly?DAYS-S.day:0;
   var id=judge(early);
+  id=rollHidden(id)||id;
   var st=$('#stage');if(st)st.innerHTML='';
   cine(submitScene(id)).then(function(){endGame(id,early)});
 }
 
-function endGame(id,early){
+function endGame(id,early,opt){
   early=early||0;
   if(id==='burnout'&&S.dayLog.length)hist.push(S.dayLog.join(''));
   var E=END_BY_ID[id];
-  saveEnd(id);
+  if(!(opt&&opt.preview))saveEnd(id);
   document.body.classList.remove('low');
   var ctx={early:early,short:Math.max(0,GOAL-S.chars)};
   var when=id==='burnout'?('DAY '+S.day+'で脱落'):(early>=1?early+'日前に提出':'締切ギリギリ');
   var theme=S.theme||'無題の卒論';
   var rows=[];
   for(var i=0;i<hist.length;i+=5)rows.push(hist.slice(i,i+5).join(' '));
-  var score=calcScore(id,early);
-  var text='【卒論ギリギリシミュレーター】\n'+E.em+' '+E.title+'(ランク'+E.rank+' / '+score+'点)\n『'+theme+'』\n配属:'+L.lab.em+L.labName+'('+L.lab.name+'・'+L.lab.rar+')\n'+fmt(S.chars)+'字 / '+fmt(GOAL)+'字 ・ '+when+'\n'+rows.join('\n')+'\n'+shareURL()+'\n#卒論ギリギリシミュ #卒論';
+  var score=E.hidden?null:calcScore(id,early);
+  var near=(id==='graduate'||id==='charsonly')&&S.q>=80&&S.trust>=L.exTrust&&S.sus===0&&S.hits>0;
+  var text='【卒論ギリギリシミュレーター】\n'+E.em+' '+E.title+(E.hidden?'(隠しエンディング!)':'(ランク'+E.rank+' / '+score+'点)')+'\n『'+theme+'』\n配属:'+L.lab.em+L.labName+'('+L.lab.name+'・'+L.lab.rar+')\n'+fmt(S.chars)+'字 / '+fmt(GOAL)+'字 ・ '+when+'\n'+rows.join('\n')+'\n'+shareURL()+'\n#卒論ギリギリシミュ #卒論';
   var enc=encodeURIComponent(text);
   setRoot(
     '<main class="result">'+
@@ -1218,8 +1252,8 @@ function endGame(id,early){
         '<div class="sc-head">卒論ギリギリシミュレーター</div>'+
         '<div class="sc-theme">『'+esc(theme)+'』</div>'+
         '<h2 class="sc-title">'+E.em+' '+E.title+'</h2>'+
-        '<span class="sc-rank">ランク '+E.rank+' ・ '+score+'点</span>'+
-        '<p class="sc-desc">'+esc(E.desc(ctx))+'</p>'+
+        '<span class="sc-rank">'+(E.hidden?'隠しエンディング ・ 測定不能':'ランク '+E.rank+' ・ '+score+'点')+'</span>'+
+        '<p class="sc-desc">'+esc(E.desc(ctx))+'</p>'+(near?'<p class="sc-near">惜しい!ハプニングを食らっていなければ、優秀卒論賞だった。</p>':'')+
         '<dl class="stats" style="margin:0">'+
           '<div><dt>文字数</dt><dd>'+fmt(S.chars)+'</dd></div>'+
           '<div><dt>提出</dt><dd>'+esc(when)+'</dd></div>'+
@@ -1297,7 +1331,9 @@ var STYLE_BY_END={
   repeat:'途中で力尽きている。第3章あたりから箇条書きになり、最後は「(以下、未完)」で終わる。',
   sus:'前半は学生らしい文体なのに、途中から急に整いすぎた文体に変わる。先行研究との類似をそれとなく匂わせる。',
   burnout:'序盤はまともだが、後半から文章が崩壊していく。幻覚じみた一文(夕食の献立、睡眠、猫など)が混ざり、最後は途切れる。',
-  blank:'表紙とタイトルのみ。本文は「はじめに」の1〜2行だけで、あとは空白。'
+  blank:'表紙とタイトルのみ。本文は「はじめに」の1〜2行だけで、あとは空白。',
+  neko:'著者が猫。キーボードの上を歩いた文字化けと、段ボール箱への愛が混ざる。にゃー。',
+  uchu:'地球外の知的生命体からの査読コメントが付く。睡眠時間への指摘と、縦軸の単位への指摘が入る。判定は軽微な修正で受理。'
 };
 
 /* ---------- mock thesis generator (no AI) ----------
@@ -1410,10 +1446,11 @@ function makeThesis(o){
   var A=tp.a, B=tp.b, C=tp.c;
   var n=N(3,9)*(R()<0.5?1:7), mm=(N(12,98)/10).toFixed(1), sd=(N(3,40)/10).toFixed(1), rr=N(41,93);
   var V={A:A,B:B,C:C,AB:(tp.hasA?A+'における':'')+B,n:n,m:mm,sd:sd,rr:rr,
-    sleeps:st.sleeps||0,writes:st.writes||0,minSan:st.minSan==null?100:st.minSan,cut:st.cut||0,backups:st.backups||0,
+    dodged:st.dodged||0,sleeps:st.sleeps||0,writes:st.writes||0,minSan:st.minSan==null?100:st.minSan,cut:st.cut||0,backups:st.backups||0,
     early:o.early||0,sur:sur,unit:P(['点','回','分','pt','単位(仮)','B値']),
     p:o.q<30?'p ≈ 0.05くらい':'p = '+P(['0.003','0.012','0.021','0.034','0.049'])};
   var good=id==='early'||id==='excellent';
+  var special=id==='neko'||id==='uchu';
   var FPOOL=good?FINDINGS.filter(function(x){return x.ser}):FINDINGS;
   var FD=FPOOL[Math.floor(R()*FPOOL.length)];
   V.why=FD.why;V.peak=FD.peak;V.cor=FD.cor;V.fut=FD.fut;
@@ -1423,6 +1460,7 @@ function makeThesis(o){
     return s.replace(/\{(\w+)\}/g,function(_,k){return V[k]!=null?V[k]:''});
   }
   function F(a){return a.map(f)}
+  function dodgeNote(a){if(V.dodged>0)a.push(f('調査期間中、機器トラブル等が{dodged}件生じたが、事前の保存と体調管理により、データの欠損には至らなかった。'));return a}
   function pad(arr){var out=[];arr.forEach(function(x){out.push(x);out.push(P(TH_PADS)+x);if(R()<0.55)out.push(P(TH_FILL))});return out}
 
   /* ---- 部品 ---- */
@@ -1485,9 +1523,9 @@ function makeThesis(o){
       '先行する報告は全体の傾向を示すにとどまり、{why}との関係を条件ごとに比べた例は限られている。',
       'そこで本研究は、{AB}と{why}の関係を、同一の対象について継続的に記録して明らかにすることを目的とした。',
       '仮説1:{B}は{why}によって変化する。仮説2:その変化は{peak}で最も大きい。']));
-    sec(H[2],F(['対象は{A}から募った{n}名とした。調査期間は10日間であった。',
+    sec(H[2],dodgeNote(F(['対象は{A}から募った{n}名とした。調査期間は10日間であった。',
       '{B}は毎日同じ時刻に、同じ手順で記録した。記録は紙とスマートフォンの二重で行い、毎晩保存した。',
-      '解析には分散分析と相関分析を用い、有意水準は5%とした。効果量も併せて算出した。']));
+      '解析には分散分析と相関分析を用い、有意水準は5%とした。効果量も併せて算出した。'])));
     var base_=N(20,60)/10;
     var tabS={cap:f('表1 {AB}の条件別の値(n = {n})'),head:['条件',B+'(平均)','基準条件との差'],
       rows:[['基準条件',base_.toFixed(1),'—'],['中間条件',(base_*1.3).toFixed(1),'+30%'],[FD.peak,(base_*1.8).toFixed(1),'+80%']]};
@@ -1511,6 +1549,33 @@ function makeThesis(o){
         yuru:'うん、いいんじゃない? ……いや、本当によくできてる。',normal:'論旨が明快で、考察も的確である。優秀卒論賞に推薦する。'};
       sec('指導教員のコメント',[(VERD[lab.id]||VERD.normal)]);
     }
+  }else if(id==='neko'){
+    d.sub='—こたつの中から—';
+    sec(H[0],F(['本研究は、{AB}について、キーボードの上を歩きながら{C}を行ったものである。','その結果、jjjjjjjjjjjjjjjjjj;;;;;;;;(p < 0.05にゃ)。','以上より、{B}は、魚と同程度に重要であることが示唆された。']));
+    sec(H[1],F(['{AB}は、猫にとっても重要な課題である。','筆者(猫)は、{B}を毎日欠かさず観察してきた。主に窓際から。','本研究の目的は、{AB}を明らかにし、あわせて筆者がこたつから出ずに卒業することである。','仮説1:{B}は、日向で増加する。仮説2:仮説1に関わらず、筆者は寝る。']));
+    sec(H[2],['対象は筆者である(n = 1、猫)。','測定は、午前3時の運動会(約15分)の前後に行った。','解析は、爪の幅で行った。']);
+    var rn=sec(H[3],F(['{B}は、段ボール箱に入ったときに最大値を示した(p = 0.00にゃ)。','これ以降の文字は、筆者がキーボードの上を歩いたため、asdfghjkl;qwertyuiop となっている。']));
+    rn.table={cap:f('表1 {AB}の条件別の値(n = 1)'),head:['条件',B+'(平均)','備考'],rows:[['ひなた','1.0','寝ていた'],['こたつ','2.5','寝ていた'],['段ボール箱','9.9','寝ていた(最大)']]};
+    rn.fig=f('図1 段ボール箱の大きさと{B}の関係(縦軸の単位は、にゃ)');
+    sec(H[4],F(['この結果は、{AB}が段ボール箱によって説明できることを示している。','一方、猫が筆頭著者として適切かという点には、議論の余地がある。','なお、筆者は考察の途中で寝た。']));
+    sec(H[5],['にゃー。']);
+    sec(H[6],['共著者(人間)に感謝する。共著者は、おやつをくれた。']);
+    sec(H[7],[],[f('[1] 猫(2026)「こたつの中の{B}」こたつ, p.1(全1ページ。ほぼ寝ている)。'),f('[2] 猫(2026)「窓際から見た{B}」窓際, p.2.')]);
+    d.tail='(原稿は、ここでキーボードの上を歩いていった)';
+  }else if(id==='uchu'){
+    d.sub='—星間査読版—';
+    sec(H[0],F(['本研究は、{AB}について{C}を行ったものである。','提出後、銀河系第3腕の知的生命体から、査読コメントが届いた。','本稿は、地球の学術誌に前例のない、星間査読を経た論文である(と思われる)。']));
+    sec(H[1],F(['{AB}は、地球人にとって重要な課題であり、宇宙人にとっても関心事であった(宇宙人調べ)。','しかし、銀河系の標準的な研究者は、「{B}」という単語を知らなかった。','そこで本研究では、{AB}を翻訳して、全銀河に報告する。']));
+    sec(H[2],F(['地球の10日間を、銀河標準時の約{n}マイクロ秒として扱った。','筆者は、この間に{sleeps}回の睡眠をとった。これは銀河標準の約3分の1である。']));
+    var ru=sec(H[3],F(['{B}は、地球人の間では{m}±{sd}{unit}であった(表1)。','宇宙人の間では測定できなかった。単位がなかったためである。']));
+    ru.table={cap:f('表1 {AB}の測定値(n = {n}、地球人のみ)'),head:['対象',B+'(平均)','備考'],rows:[['地球人',(N(20,60)/10).toFixed(1),'—'],['宇宙人','測定不能','単位がない']]};
+    ru.fig=f('図1 {B}の測定値(縦軸の単位は、あとで決める)');
+    sec('査読コメント',[],['査読者A(プロキシマ・ケンタウリ在住):方法は妥当。ただし、地球人の睡眠時間が短すぎる。','査読者B(大マゼラン雲):図1の縦軸の単位を決めてください。「あとで決める」とありますが、「あと」はいつ来ますか。','査読者C(通りすがり):興味深い。続きを書け。']);
+    sec(H[4],F(['査読を踏まえ、{AB}の考察を次のとおり改める。','地球人は{B}を重要視するが、銀河標準では、{B}は特に重要視されていない。','ただし、睡眠が重要であることには、全員が同意した。']));
+    sec(H[5],['判定:軽微な修正のうえ受理(Minor revision)。','本稿は、修正のうえ、銀河系紀要の次号に掲載される予定である(日程未定)。']);
+    sec(H[6],[ACK]);
+    sec(H[7],[],['[1] 銀河系第3腕の住人(年代不明)「地球の観察記録 第10巻」銀河系紀要.','[2] 通りすがりの宇宙人(2026)「Re: 卒論」星間メール.']);
+    d.tail='(査読者C:続きは?)';
   }else if(id==='graduate'){
     sec(H[0],abs);
     sec(H[1],intro);
@@ -1562,7 +1627,7 @@ function makeThesis(o){
 
   /* ---- 赤ペン:段落のうしろに、研究室の口調でコメントを入れる ---- */
   var redPool=RED[lab.id]||RED.normal;
-  var redN=good?0:lab.id==='hotoke'?3:lab.id==='absent'?1:Math.max(0,Math.min(5,Math.round((100-o.q)/22)));
+  var redN=(good||special)?0:lab.id==='hotoke'?3:lab.id==='absent'?1:Math.max(0,Math.min(5,Math.round((100-o.q)/22)));
   if(id==='blank')redN=Math.min(redN,1);
   var cand=d.secs.filter(function(x){return x.p.length&&x.h!=='謝辞'&&x.h!=='参考文献'});
   for(var k=0;k<redN&&cand.length;k++){
@@ -1570,10 +1635,12 @@ function makeThesis(o){
     (target.red=target.red||[]).push(P(redPool));
   }
 
-  if(!good)chaosify(d,o,R,P,{has:true,core:B});
+  if(!good&&!special)chaosify(d,o,R,P,{has:true,core:B});
   d.meta=['〇〇大学 〇〇学部 4年 '+sur+'研究室','提出者:あなた / 指導教員:'+sur+'先生',
-    'ゲーム内の字数 '+fmt(o.chars)+'字 ・ '+o.title+'('+o.score+'点)'];
-  if(!good)d.meta.push('カオス度 '+stars(o.chaos||0));
+    'ゲーム内の字数 '+fmt(o.chars)+'字 ・ '+o.title+'('+(o.score==null?'測定不能':o.score+'点')+')'];
+  if(id==='neko')d.meta[1]='提出者:猫(ミケ・3歳) / 指導教員:'+sur+'先生(猫アレルギー)';
+  if(id==='uchu')d.meta[1]='提出者:あなた / 指導教員:'+sur+'先生(星間査読の手続きは知らない)';
+  if(!good&&!special)d.meta.push('カオス度 '+stars(o.chaos||0));
   return d;
 }
 
@@ -1643,7 +1710,7 @@ function saveFile(name,text,say){
 
 function setupThesis(E,ctx,score,theme){
   var sec=$('#thesis');if(!sec)return;
-  var snap={tp:S_TITLE,stats:{sleeps:S.sleeps,writes:S.writes,minSan:S.minSan,cut:S.cut,backups:S.backups},chaos:chaosLevel(),marks:Object.assign({},S.marks),scraps:S.scraps.slice(),lab:L.lab,sur:L.sur,theme:theme,end:E.id,title:E.title,score:score,early:ctx.early,chars:S.chars,q:S.q,trust:S.trust,san:S.san,sus:S.sus};
+  var snap={tp:S_TITLE,stats:{dodged:S.dodged,sleeps:S.sleeps,writes:S.writes,minSan:S.minSan,cut:S.cut,backups:S.backups},chaos:chaosLevel(),marks:Object.assign({},S.marks),scraps:S.scraps.slice(),lab:L.lab,sur:L.sur,theme:theme,end:E.id,title:E.title,score:score,early:ctx.early,chars:S.chars,q:S.q,trust:S.trust,san:S.san,sus:S.sus};
   var gen=$('#gen'),paper=$('#paper'),msg=$('#thmsg'),btns=$('#paperbtns'),aiBtn=$('#ai');
   var last='',seed=(Date.now()^Math.floor(Math.random()*1e9))>>>0;
   function say(t){msg.textContent=t;msg.hidden=!t}
@@ -1680,7 +1747,7 @@ function setupThesis(E,ctx,score,theme){
       aiBtn.disabled=true;aiBtn.textContent='Claudeが執筆中…';say('');paper.hidden=false;paper.classList.add('raw');paper.textContent='';btns.hidden=true;
       var prompt='あなたは卒論ゲームの「模擬卒論ジェネレーター」です。プレイ結果に合わせて、短い日本語の模擬卒論を書いてください。\n\n'+
         '【卒論のテーマ】'+theme+'\n'+
-        '【結果】'+E.title+'(ランク'+E.rank+'、'+score+'点/100点)\n'+
+        '【結果】'+E.title+'('+(score==null?'隠しエンディング':'ランク'+E.rank+'、'+score+'点/100点')+')\n'+
         '【ステータス】文字数 '+snap.chars+'/'+GOAL+'、研究の質 '+snap.q+'/100、教授の信頼 '+snap.trust+'/100、正気度 '+snap.san+'/100、不正疑惑 '+snap.sus+'\n'+
         '【出来のスタイル】'+STYLE_BY_END[E.id]+'\n\n'+
         '【書き方の条件】\n'+
@@ -1718,8 +1785,18 @@ function copyText(text,btn){
 root=$('#root');
 renderTitle();
 
+/* 隠しエンディングの確認用:URLの末尾に #preview-neko / #preview-uchu を付けると結果画面だけ見られる(図鑑には記録されない) */
+(function(){
+  var m=/^#preview-(neko|uchu)$/.exec(location.hash||'');
+  if(!m)return;
+  window.__noCine=true;
+  newGame('深夜のコンビニにおける財布の残高の比較','normal','佐藤');
+  Object.assign(S,{chars:10300,q:60,trust:55,san:50,sleeps:4,minSan:25,marks:{cat:1,night:1}});
+  endGame(m[1],0,{preview:true});
+})();
+
 /* test hook (no effect on play) */
-window.__sotsu={cine:cine,labScene:labScene,submitScene:submitScene,eventScene:eventScene,judge:judge,endGame:endGame,newGame:newGame,labs:LABS,get state(){return S},get lab(){return L}};
+window.__sotsu={showIncident:showIncident,INCIDENTS:INCIDENTS,mark:mark,rollHidden:rollHidden,HIDDEN_P:HIDDEN_P,cine:cine,labScene:labScene,submitScene:submitScene,eventScene:eventScene,judge:judge,endGame:endGame,newGame:newGame,labs:LABS,get state(){return S},get lab(){return L}};
 })();
 </script>
 </body>

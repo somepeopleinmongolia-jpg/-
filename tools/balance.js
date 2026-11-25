@@ -28,7 +28,7 @@ const BOT=`window.__play=async function(strategy){
   while(Date.now()-t0<20000){
     await tick();
     const res=document.querySelector('.result');
-    if(res){const s=S();return {chaos:(()=>{let p=0;for(const k in s.marks)p+=s.marks[k];p+=Math.floor((s.crazyN||0)/10)+(s.san<20?1:0)+s.sus*2;return Math.min(5,Math.floor(p*0.8))})(),lab:s.lab,down:s.down,title:document.querySelector('.sc-title').textContent,score:+document.querySelector('.sc-rank').textContent.match(/(\\d+)点/)[1],day:s.day,chars:s.chars,q:s.q,t:s.trust,san:s.san,sus:s.sus}}
+    if(res){const s=S();return {chaos:(()=>{let p=0;for(const k in s.marks)p+=s.marks[k];p+=Math.floor((s.crazyN||0)/10)+(s.san<20?1:0)+s.sus*2;return Math.min(5,Math.floor(p*0.8))})(),lab:s.lab,down:s.down,title:document.querySelector('.sc-title').textContent,score:((document.querySelector('.sc-rank').textContent.match(/(\\d+)点/)||[0,0])[1])*1,day:s.day,chars:s.chars,q:s.q,t:s.trust,san:s.san,sus:s.sus}}
     const roll=document.getElementById('roll'),go=document.getElementById('labgo');
     if(go){click(go);continue}
     if(roll){click(roll);continue}
