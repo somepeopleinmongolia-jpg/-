@@ -84,7 +84,7 @@ const BOT=`window.__play=async function(strategy){
       if(r.title==='STUCK'){console.log('STUCK');await p.goto(url);await p.evaluate(BOT);i--;continue}
       tally[r.title]=(tally[r.title]||0)+1;sc.push(r.score);chars+=r.chars;if(r.down)downs++;ch[r.chaos]++;
       const B=byLab[r.lab]=byLab[r.lab]||{n:0,good:0,bad:0};B.n++;
-      if(/早期|優秀|無事|字数|温情|数え間違い|逃げ切り|倒れる/.test(r.title))B.good++;else B.bad++;
+      if(/早期|優秀|無事|字数|温情|数え間違い|逃げ切り|倒れる|院に|マスコット|旧版/.test(r.title))B.good++;else B.bad++;
     }
     sc.sort((a,b)=>a-b);
     out[strat]={tally,median:sc[N>>1],avgChars:Math.round(chars/N)};
