@@ -526,6 +526,18 @@ EVENTS.push(
     {label:'卒論に集中する',run:function(){return {t:'集中した。ときどき目が合った気がした。',fx:{c:300,s:-4}}}}]}
 );
 
+EVENTS.push(
+  {id:'kb',em:'⌨️',tag:'トラブル',title:'キーボードが壊れた',body:'「あ」と「の」と「す」が反応しない。「に」も怪しい。締切は、変わらない。',choices:[
+    {label:'コンビニで安いキーボードを買う',run:function(){S.kb=0;return {t:'2,980円で解決した。投資だ。打鍵感が、ちょっと軽い。',fx:{ap:-1,s:-3}}}},
+    {label:'スマホのフリック入力でしのぐ',run:function(){S.kb=3;S.kbMode='phone';mark('kb');return {t:'親指が主役になった。3日くらいは、これでいく。画面が近い。',fx:{s:-6}}}},
+    {label:'壊れたまま、気合いで打つ',run:function(){S.kb=4;S.kbMode='dead';mark('kb');return {t:'押しても反応しないキーを、何度も叩く。指が覚えるまで、4日はかかる。',fx:{s:-10}}}},
+    {label:'研究室のPCを借りる',run:function(){
+      if(S.trust>=50){S.kb=0;return {t:'「いいよ」と言われた。ただし、夜までに返すこと。',fx:{t:-3,s:2}}}
+      S.kb=2;S.kbMode='dead';mark('kb');
+      return {t:'「それは自分で何とかして」と断られた。正論だった。',fx:{t:-5,s:-4}};
+    }}]}
+);
+
 var FINAL_EV={id:'format',em:'📮',tag:'最終日',title:'提出フォーマット地獄',body:'余白、目次、ページ番号、フォント。提出要項は全部で12ページある。',choices:[
   {label:'自動目次に賭ける',run:function(){
     if(chance(0.5))return {t:'自動生成が一発で成功した。奇跡だ。',fx:{q:6}};
@@ -654,7 +666,7 @@ function makeTitle(p){
 
 /* プレイ中の事件の痕跡。模擬卒論にそのまま残る */
 /* 被弾:食らうと優秀卒論賞・早期提出が取れなくなるハプニング */
-var HARM={lost:1,coffee:1,down:1,toc:1,visit:1};
+var HARM={lost:1,coffee:1,down:1,toc:1,visit:1,kb:1};
 function mark(k){if(S){S.marks[k]=(S.marks[k]||0)+1;if(HARM[k])S.hits=(S.hits||0)+1}}
 function chaosLevel(){
   var pts=0;for(var k in S.marks)pts+=S.marks[k];
@@ -665,7 +677,7 @@ function chaosLevel(){
 function newGame(theme,labId,sur){
   L=labOf(labId,sur);
   if(!S_TITLE||S_TITLE.full!==theme)S_TITLE={full:theme||''};
-  S={day:1,ap:AP_PER_DAY,chars:0,san:L.san,trust:L.trust,q:L.q,sus:0,boost:false,down:false,lab:L.lab.id,sur:L.sur,marks:{},scraps:[],crazyN:0,saved:0,hits:0,dodged:0,incToday:false,cut:0,minSan:100,writes:0,sleeps:0,coffee:0,backups:0,dayLog:[],theme:theme||'',queue:shuffle(EVENTS).slice(0,DAYS-1)};
+  S={day:1,ap:AP_PER_DAY,chars:0,san:L.san,trust:L.trust,q:L.q,sus:0,boost:false,down:false,lab:L.lab.id,sur:L.sur,marks:{},scraps:[],crazyN:0,saved:0,hits:0,dodged:0,kb:0,kbMode:'',incToday:false,cut:0,minSan:100,writes:0,sleeps:0,coffee:0,backups:0,dayLog:[],theme:theme||'',queue:shuffle(EVENTS).slice(0,DAYS-1)};
   hist=[];
 }
 
@@ -876,7 +888,7 @@ var HELP={
   trust:'教授の信頼:相談すると上がるが、研究の質が低いまま行くと下がる。高いと4日目・8日目の赤ペン添削で削られる量が減る。優秀賞や温情に必要。',
   q:'研究の質:文献・実験・相談で上がる。高いほど書く速度が上がり(書くことがある)、実験も成功しやすい。卒業に必要。低いと赤ペン添削で大きく削られる。',
   unsaved:'未保存の字数:最後のバックアップより後に書いた分。PCのフリーズなどで消えることがある。夜、寝る前にバックアップできる。',
-  nohit:'無傷:PCフリーズでデータが消える、コーヒーをこぼす、倒れる、教授に抜き打ちで見つかる、最終日の目次が壊れる、などの「被弾」がゼロの状態。1つでも食らうと優秀卒論賞と早期提出は取れない。保存しておく、正気度を保つ、研究の質を上げておく、目次は手作業で整える、で避けられる。'
+  nohit:'無傷:PCフリーズでデータが消える、コーヒーをこぼす、倒れる、教授に抜き打ちで見つかる、キーボードが壊れたまま放置する、最終日の目次が壊れる、などの「被弾」がゼロの状態。1つでも食らうと優秀卒論賞と早期提出は取れない。保存しておく、正気度を保つ、研究の質を上げておく、目次は手作業で整える、で避けられる。'
 };
 function wireHelp(){
   var tip=$('#helptip');
@@ -1034,11 +1046,11 @@ function doAction(a){
 }
 
 function doWrite(){
-  var boost=S.boost, crazy=S.san<30, DUR=5000, taps=0;
+  var boost=S.boost, crazy=S.san<30, DUR=5000, taps=0, kb=S.kb>0?S.kbMode:'';
   // 1タップの字数:研究の質が高いほど速い(書くことがある)。正気度が低いと遅い。30タップを超えると手が疲れて半分
-  var mult=(0.7+S.q/100)*(crazy?0.75:1)*L.wm*(boost?1.5:1);
+  var mult=(0.7+S.q/100)*(crazy?0.75:1)*L.wm*(boost?1.5:1)*(kb==='phone'?0.5:1);
   var card=el('div','card frenzy');
-  card.innerHTML='<span class="tag">書く ・ 5秒 ・ 速さ ×'+mult.toFixed(2)+(boost?'(エナドリ)':'')+'</span>'+
+  card.innerHTML='<span class="tag">書く ・ 5秒 ・ 速さ ×'+mult.toFixed(2)+(boost?'(エナドリ)':'')+(kb==='dead'?' ・キー故障中':kb==='phone'?' ・スマホ入力':'')+'</span>'+
     '<div class="timer"><i id="tbar"></i></div>'+
     '<div class="doc" id="doc"></div>'+
     '<button class="tapbtn" id="tap" type="button" aria-label="連打して書く">タップで書き始める</button>'+
@@ -1051,24 +1063,25 @@ function doWrite(){
     if(over)return;
     if(!started){started=true;t0=performance.now();btn.textContent='叩け!!';loop()}
     taps++;
-    var n=Math.max(1,Math.round(rand(21,29)*mult*(taps>32?0.45:1)));
+    var dead=kb==='dead'&&Math.random()<0.55;          /* 壊れたキー:反応しない */
+    var n=dead?0:Math.max(1,Math.round(rand(21,29)*mult*(taps>32?0.45:1)));
     total+=n;
-    var cz=crazy&&chance(0.55);
+    var cz=!dead&&crazy&&chance(0.55);
     var f=cz?pick(CRAZY):pick(FRAGS);
     if(cz){S.crazyN++;if(S.scraps.indexOf(f)<0&&S.scraps.length<6)S.scraps.push(f)}
-    txt+=f+(chance(0.35)?'。':'');
+    if(!dead)txt+=f+(chance(0.35)?'。':'');
     if(txt.length>300)txt=txt.slice(-260);
     docEl.textContent=txt;docEl.scrollTop=docEl.scrollHeight;
     cnt.textContent=fmt(total);
-    var p=el('span','pop');p.textContent='+'+n;
+    var p=el('span','pop');p.textContent=dead?'×':'+'+n;
     var r=btn.getBoundingClientRect();
     p.style.left=(x==null?r.width/2:x-r.left)+'px';
     p.style.top=(y==null?r.height/2:y-r.top)+'px';
     btn.appendChild(p);
     if(btn.querySelectorAll('.pop').length>14)btn.removeChild(btn.querySelector('.pop'));
     setTimeout(function(){if(p.parentNode)p.parentNode.removeChild(p)},650);
-    blip(360+Math.random()*300,0.04,'square',0.02);
-    buzz(6);
+    blip(dead?120:360+Math.random()*300,0.04,'square',0.02);
+    buzz(dead?20:6);
   }
   function loop(){
     var p=(performance.now()-t0)/DUR;
@@ -1110,6 +1123,7 @@ function endDay(){
 }
 function nightEnd(){
   if(L.night)S.san=clamp(S.san+L.night,1,100);
+  if(S.kb>0){S.kb--;if(S.kb===0){S.kbMode='';toast('キーボードが直った(あるいは、慣れた)')}}
   S.day++;
   beginDay();
 }
@@ -1461,6 +1475,7 @@ function chaosify(d,o,R,P,tp){
   function mid(x,ins){var i=Math.floor(x.length*(0.3+R()*0.4));return x.slice(0,i)+ins+x.slice(i)}
   var s;
   if(m.cat&&(s=anyP())){var k=Math.floor(R()*s.p.length);s.p[k]=mid(s.p[k],'jjjjjjjjjjjjjjjjjj;;;;;;;;')}
+  if(m.kb){secs.forEach(function(x){if(x.h!=='謝辞'&&R()<0.7)x.p=x.p.map(function(y){return y.replace(/[あのすをにがはでと]/g,function(c){return R()<0.5?'□':c})})})}
   if(m.ai&&(s=sec('考察')||anyP())){s.p.unshift('ご質問ありがとうございます!以下に考察をわかりやすくまとめます。');s.p.push('他にお手伝いできることはありますか?')}
   if(m.senpai&&(s=sec('はじめに')||anyP()))s.p.push('本研究では、「'+P(TH_OTHER)+'」について明らかにすることを目的とする(※先輩の卒論から消し忘れ)。');
   if(m.night&&(s=sec('おわりに')||anyP()))s.p.push(P(TH_POEM));
@@ -1559,6 +1574,7 @@ function makeThesis(o){
   if(o.marks&&o.marks.lost)notes.push('データの一部はPCのフリーズにより失われた。失われた部分には、たぶん最も重要な考察が含まれていた。');
   if(o.marks&&o.marks.nosave)notes.push('筆者はバックアップを取らずに寝た夜がある。研究倫理上の問題はないが、精神衛生上の問題はある。');
   if(V.backups>=5)notes.push(f('なお、筆者は{backups}回のバックアップを行った。バックアップの{C}は今後の課題である。'));
+  if(o.marks&&o.marks.kb)notes.push('本研究の途中、キーボードが壊れた。以降の「□」は、押せなかったキーである。');
   if(o.marks&&o.marks.coffee)notes.push('本研究の途中、キーボードにコーヒーがこぼれた。以降、本文に「の」が少ない箇所がある。');
   if(o.marks&&o.marks.oversleep)notes.push('調査期間中、筆者は1日の半分を睡眠に費やした日がある。これは予備実験として扱う。');
   if(o.marks&&o.marks.breakthrough)notes.push('実験の途中で、予想と真逆の結果が得られた。本稿ではこれを「発見」と呼ぶ。');
@@ -1949,7 +1965,7 @@ renderTitle();
 })();
 
 /* test hook (no effect on play) */
-window.__sotsu={showIncident:showIncident,INCIDENTS:INCIDENTS,mark:mark,rollHidden:rollHidden,HIDDEN_P:HIDDEN_P,cine:cine,labScene:labScene,submitScene:submitScene,eventScene:eventScene,judge:judge,endGame:endGame,newGame:newGame,labs:LABS,get state(){return S},get lab(){return L}};
+window.__sotsu={EVENTS:EVENTS,showEvent:showEvent,showIncident:showIncident,INCIDENTS:INCIDENTS,mark:mark,rollHidden:rollHidden,HIDDEN_P:HIDDEN_P,cine:cine,labScene:labScene,submitScene:submitScene,eventScene:eventScene,judge:judge,endGame:endGame,newGame:newGame,labs:LABS,get state(){return S},get lab(){return L}};
 })();
 </script>
 </body>
