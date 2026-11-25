@@ -544,15 +544,29 @@ var ENDINGS=[
   {id:'burnout',rank:'F',stamp:'休',em:'💀',title:'燃え尽きて休学',good:0,desc:function(){return '気づいたら実家の天井を見ていた。休学届は今度書く。'}},
   {id:'blank',rank:'F',stamp:'白',em:'🫥',title:'白紙提出',good:0,desc:function(){return '表紙だけ提出した。タイトルは立派だった。'}},
   {id:'neko',rank:'?',stamp:'猫',em:'🐈',title:'猫が卒業',good:1,hidden:1,desc:function(){return '提出した卒論の著者欄が、いつのまにか猫になっていた。学位記は猫の名前で届いた。おめでとう、ミケ。'}},
-  {id:'uchu',rank:'?',stamp:'宇',em:'🛸',title:'星間査読',good:1,hidden:1,desc:function(){return '提出した卒論に、地球外から査読コメントが届いた。判定は「軽微な修正で受理」。卒業は……まあ、たぶん大丈夫。'}}
+  {id:'uchu',rank:'?',stamp:'宇',em:'🛸',title:'星間査読',good:1,hidden:1,desc:function(){return '提出した卒論に、地球外から査読コメントが届いた。判定は「軽微な修正で受理」。卒業は……まあ、たぶん大丈夫。'}},
+  {id:'letter',rank:'?',stamp:'恋',em:'💘',title:'ラブレター受理',good:1,hidden:1,desc:function(){return '提出したのは、卒論ではなくラブレターだった。図書館のいつもの席の人が、真っ赤な顔で受け取った。返事は「はい」。卒論は、また来週。'}},
+  {id:'okan',rank:'?',stamp:'母',em:'🍙',title:'母が代理提出',good:1,hidden:1,desc:function(){return '窓口に現れたのは、母だった。卒論と一緒に、米5キロを置いていった。「うちの子がお世話になっております」。なぜか受理された。'}},
+  {id:'aigrad',rank:'?',stamp:'AI',em:'🤖',title:'AIが首席卒業',good:1,hidden:1,desc:function(){return '提出した卒論は、AIが書いた部分のほうが高く評価された。首席はAI。あなたは「ご協力ありがとうございました」と言われた。'}},
+  {id:'nobel',rank:'?',stamp:'賞',em:'🏅',title:'世紀の大発見(誤)',good:1,hidden:1,desc:function(){return '実験室の観葉植物の世話が、なぜか世界的な大発見だった。ストックホルムから電話が来た。卒論は、まだ書いていない。'}}
 ];
 /* 隠しエンディング:提出まで進んだとき、条件つきでごくまれに起きる(猫の入力を採用した/午前2時に乗った) */
-var HIDDEN_P={neko:0.01,uchu:0.01};
+var HIDDEN_RULES=[
+  {id:'neko',need:function(m){return m.cat}},          /* 猫の入力を採用した */
+  {id:'uchu',need:function(m){return m.night}},        /* 午前2時の波に乗った */
+  {id:'letter',need:function(m){return m.letter}},     /* ラブレターを書いた */
+  {id:'okan',need:function(m){return m.parent}},       /* 母に長文を返信した */
+  {id:'aigrad',need:function(m){return m.ai}},         /* AIに全部書かせた */
+  {id:'nobel',need:function(m){return m.breakthrough}} /* 実験で予想と真逆の結果が出た */
+];
+var HIDDEN_P={neko:0.01,uchu:0.01,letter:0.01,okan:0.01,aigrad:0.01,nobel:0.01};
 function rollHidden(id){
   if(!S||id==='blank'||id==='burnout')return null;
-  var m=S.marks||{};
-  if(m.cat&&Math.random()<HIDDEN_P.neko)return 'neko';
-  if(m.night&&Math.random()<HIDDEN_P.uchu)return 'uchu';
+  var m=S.marks||{},order=shuffle(HIDDEN_RULES);
+  for(var i=0;i<order.length;i++){
+    var r=order[i];
+    if(r.need(m)&&Math.random()<(HIDDEN_P[r.id]||0))return r.id;
+  }
   return null;
 }
 var END_BY_ID={};ENDINGS.forEach(function(e){END_BY_ID[e.id]=e});
@@ -1185,7 +1199,11 @@ function submitScene(id){
     blank:['……表紙しか、ありませんが?','これは受理できません。','tilt','不受理'],
     sus:['……少々お待ちください。','指導教員がお呼びです。こちらへ。','tilt',null],
     neko:['……あの、お名前の欄に、肉球が。','……受理します。','tilt','受理'],
-    uchu:['……窓の外に、見慣れない光が。','受理します。(上から確認が来ています)','nod','受理']
+    uchu:['……窓の外に、見慣れない光が。','受理します。(上から確認が来ています)','nod','受理'],
+    letter:['……これは、ご提出書類ではなく、お手紙のようですが。','お預かりします。(顔が赤い)','tilt','受理(?)'],
+    okan:['……あの、そちらの方は?','いつもお世話になっております。受理します(米つき)。','bow','受理'],
+    aigrad:['……これは、どなたの原稿でしょうか。','受理します。署名はAIでよろしいですか。','tilt','受理'],
+    nobel:['……ストックホルムから、お電話です。','受理します。いや、受理というか。','nod','受理']
   };
   if(id==='repeat'){
     sp.dur=4.4;sp.keys=[[0,'shot','wide'],[0.3,'anim','shake'],[0.4,'say','本日の受付は、終了しました。',2.2],[1.6,'shutter',1.3],[3.0,'shot','full']];
@@ -1243,7 +1261,7 @@ function endGame(id,early,opt){
   for(var i=0;i<hist.length;i+=5)rows.push(hist.slice(i,i+5).join(' '));
   var score=E.hidden?null:calcScore(id,early);
   var near=(id==='graduate'||id==='charsonly')&&S.q>=80&&S.trust>=L.exTrust&&S.sus===0&&S.hits>0;
-  var text='【卒論ギリギリシミュレーター】\n'+E.em+' '+E.title+(E.hidden?'(隠しエンディング!)':'(ランク'+E.rank+' / '+score+'点)')+'\n『'+theme+'』\n配属:'+L.lab.em+L.labName+'('+L.lab.name+'・'+L.lab.rar+')\n'+fmt(S.chars)+'字 / '+fmt(GOAL)+'字 ・ '+when+'\n'+rows.join('\n')+'\n'+shareURL()+'\n#卒論ギリギリシミュ #卒論';
+  var text='【卒論ギリギリシミュレーター】\n'+E.em+' '+E.title+(E.hidden?' ※隠しエンディング!':'(ランク'+E.rank+' / '+score+'点)')+'\n『'+theme+'』\n配属:'+L.lab.em+L.labName+'('+L.lab.name+'・'+L.lab.rar+')\n'+fmt(S.chars)+'字 / '+fmt(GOAL)+'字 ・ '+when+'\n'+rows.join('\n')+'\n'+shareURL()+'\n#卒論ギリギリシミュ #卒論';
   var enc=encodeURIComponent(text);
   setRoot(
     '<main class="result">'+
@@ -1333,7 +1351,11 @@ var STYLE_BY_END={
   burnout:'序盤はまともだが、後半から文章が崩壊していく。幻覚じみた一文(夕食の献立、睡眠、猫など)が混ざり、最後は途切れる。',
   blank:'表紙とタイトルのみ。本文は「はじめに」の1〜2行だけで、あとは空白。',
   neko:'著者が猫。キーボードの上を歩いた文字化けと、段ボール箱への愛が混ざる。にゃー。',
-  uchu:'地球外の知的生命体からの査読コメントが付く。睡眠時間への指摘と、縦軸の単位への指摘が入る。判定は軽微な修正で受理。'
+  uchu:'地球外の知的生命体からの査読コメントが付く。睡眠時間への指摘と、縦軸の単位への指摘が入る。判定は軽微な修正で受理。',
+  letter:'卒論の体裁のまま、中身がラブレターになっている。図書館のいつもの席の人への気持ちが、方法・結果・考察に入り込む。',
+  okan:'母が代理で提出した体裁。母の口調で「ちゃんと食べてる?」が研究の主要な変数になる。',
+  aigrad:'著者がAI。「ご質問ありがとうございます」で始まり、「他にお手伝いできることはありますか?」で終わる。',
+  nobel:'予想外の結果が大発見になった体裁。受賞理由が、実験室の観葉植物の世話になっている。'
 };
 
 /* ---------- mock thesis generator (no AI) ----------
@@ -1450,7 +1472,7 @@ function makeThesis(o){
     early:o.early||0,sur:sur,unit:P(['点','回','分','pt','単位(仮)','B値']),
     p:o.q<30?'p ≈ 0.05くらい':'p = '+P(['0.003','0.012','0.021','0.034','0.049'])};
   var good=id==='early'||id==='excellent';
-  var special=id==='neko'||id==='uchu';
+  var special=!!(END_BY_ID[id]&&END_BY_ID[id].hidden);
   var FPOOL=good?FINDINGS.filter(function(x){return x.ser}):FINDINGS;
   var FD=FPOOL[Math.floor(R()*FPOOL.length)];
   V.why=FD.why;V.peak=FD.peak;V.cor=FD.cor;V.fut=FD.fut;
@@ -1576,6 +1598,48 @@ function makeThesis(o){
     sec(H[6],[ACK]);
     sec(H[7],[],['[1] 銀河系第3腕の住人(年代不明)「地球の観察記録 第10巻」銀河系紀要.','[2] 通りすがりの宇宙人(2026)「Re: 卒論」星間メール.']);
     d.tail='(査読者C:続きは?)';
+  }else if(id==='letter'){
+    d.sub='—図書館のいつもの席の人へ—';
+    sec(H[0],['本稿は、卒論として提出されたが、内容はラブレターである(誤提出)。','結果として、p < 0.05 で、この気持ちは本物であることが示された。']);
+    sec(H[1],F(['図書館のいつもの席の人へ。','あなたが返却した本に、付箋が一枚残っていました。','それを読んでから、わたしの{AB}は少しも進んでいません。']));
+    sec(H[2],F(['毎日、同じ時間に図書館へ行った。','目が合った回数を記録した。','記録は、ほぼ心拍数と同じ速さで更新された。']));
+    var rl=sec(H[3],['目が合った回数は、日を追うごとに増加した。','会釈が返ってきたのは、金曜日であった(たぶん)。']);
+    rl.table={cap:'表1 目が合った回数の推移',head:['曜日','目が合った回数','備考'],rows:[['月',String(N(0,2)),'気づかれていない'],['水',String(N(2,4)),'会釈された(気がする)'],['金',String(N(4,7)),'付箋の件を覚えていた']]};
+    sec(H[4],F(['この結果は、あなたへの気持ちが{B}より重要であることを示している。','ただし、観測者(筆者)はひどく緊張していた。']));
+    sec(H[5],['提出が終わったら、声をかけてもいいですか。']);
+    sec(H[6],F(['{AB}は、また来週に回します。']));
+    d.tail='(返信:はい)';
+  }else if(id==='okan'){
+    d.sub='—母より—';
+    sec(H[0],F(['本研究は、{AB}について、うちの子が{C}を行ったものである。','母が提出した。']));
+    sec(H[1],F(['うちの子は、小さいころから{B}が好きでした。','先生、ご迷惑をおかけしていませんか。']));
+    sec(H[2],['米5キロを持参した。','手土産(煎餅)を、研究室の皆さんに配った。']);
+    sec(H[3],['卒業は、ほぼ確実である(母の見立て)。','「ちゃんと食べてる?」の返信率は、100%であった。']);
+    sec(H[4],F(['最も重要な変数は、ちゃんと食べているかである。','次に重要な変数は、睡眠である。','{B}は、その次でよい。']));
+    sec(H[5],['体に気をつけて。']);
+    sec(H[6],[sur+'先生、いつもお世話になっております。']);
+    sec(H[7],[],[f('[1] 母(2026)「うちの子の{B}」LINE, p.∞.')]);
+    d.tail='(母:既読がつかないので、電話しました)';
+  }else if(id==='aigrad'){
+    d.sub='—この回答は、再生成できます—';
+    sec(H[0],F(['ご質問ありがとうございます!以下に、{AB}についてまとめます。']));
+    sec(H[1],F(['はい、{AB}についてご説明します。','なお、私は大規模言語モデルのため、{B}を実際に経験したことはありません。']));
+    sec(H[2],['以下の手順で行いました。','1. 質問を受け取る。2. 回答する。3. 何も食べない。']);
+    sec(H[3],['結果は以下のとおりです。(表は省略します)']);
+    sec(H[4],F(['ご不明な点がございましたら、お知らせください。','「提出日」の概念については、情報が不足しています。']));
+    sec(H[5],['他にお手伝いできることはありますか?']);
+    sec(H[6],['人間の共著者に感謝します。']);
+    d.tail='(首席:AI / 補欠:あなた)';
+  }else if(id==='nobel'){
+    d.sub='—偶然は、準備のできた心に訪れる—';
+    sec(H[0],F(['本研究は、{AB}について{C}を行ったところ、偶然、世紀の大発見に至ったものである。','予想と真逆の結果が出た。再現した。もう一度再現した。世界が驚いた。']));
+    sec(H[1],F(['何も起きないはずだった。','{AB}は、地味なテーマとして選ばれた。']));
+    sec(H[2],['条件を1つ変え忘れていた。','それが、すべてであった。']);
+    sec(H[3],['図1 ストックホルムからの電話番号(省略)。','なお、観葉植物は、元気であった。']);
+    sec(H[4],F(['偶然は、準備のできた心に訪れる(と、遠い国の人が言っていた)。','しかし、準備はしていなかった。']));
+    sec(H[5],['卒論の続きは、授賞式のあとで書く。']);
+    sec(H[6],['実験室の観葉植物に感謝する。毎日、水をやっただけである。']);
+    d.tail='(受賞理由:観葉植物の世話)';
   }else if(id==='graduate'){
     sec(H[0],abs);
     sec(H[1],intro);
@@ -1640,6 +1704,10 @@ function makeThesis(o){
     'ゲーム内の字数 '+fmt(o.chars)+'字 ・ '+o.title+'('+(o.score==null?'測定不能':o.score+'点')+')'];
   if(id==='neko')d.meta[1]='提出者:猫(ミケ・3歳) / 指導教員:'+sur+'先生(猫アレルギー)';
   if(id==='uchu')d.meta[1]='提出者:あなた / 指導教員:'+sur+'先生(星間査読の手続きは知らない)';
+  if(id==='letter')d.meta[1]='提出者:あなた(動悸) / 指導教員:'+sur+'先生(何も知らない)';
+  if(id==='okan')d.meta[1]='提出者:母(代理) / 指導教員:'+sur+'先生(恐縮)';
+  if(id==='aigrad')d.meta[1]='提出者:AI(首席) / 共著者:あなた(補欠)';
+  if(id==='nobel')d.meta[1]='提出者:あなた(困惑) / 指導教員:'+sur+'先生(電話に出ている)';
   if(!good&&!special)d.meta.push('カオス度 '+stars(o.chaos||0));
   return d;
 }
@@ -1787,11 +1855,11 @@ renderTitle();
 
 /* 隠しエンディングの確認用:URLの末尾に #preview-neko / #preview-uchu を付けると結果画面だけ見られる(図鑑には記録されない) */
 (function(){
-  var m=/^#preview-(neko|uchu)$/.exec(location.hash||'');
-  if(!m)return;
+  var m=/^#preview-(\w+)$/.exec(location.hash||'');
+  if(!m||!END_BY_ID[m[1]]||!END_BY_ID[m[1]].hidden)return;
   window.__noCine=true;
   newGame('深夜のコンビニにおける財布の残高の比較','normal','佐藤');
-  Object.assign(S,{chars:10300,q:60,trust:55,san:50,sleeps:4,minSan:25,marks:{cat:1,night:1}});
+  Object.assign(S,{chars:10300,q:60,trust:55,san:50,sleeps:4,minSan:25,marks:{cat:1,night:1,letter:1,parent:1,ai:1,breakthrough:1}});
   endGame(m[1],0,{preview:true});
 })();
 
