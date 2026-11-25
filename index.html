@@ -1958,6 +1958,7 @@ renderTitle();
 (function(){
   var m=/^#preview-(\w+)$/.exec(location.hash||'');
   if(!m||!END_BY_ID[m[1]]||!END_BY_ID[m[1]].hidden)return;
+  try{if(new URL(CANON_URL).hostname===location.hostname)return}catch(e){}   /* 本番のURLでは無効(ネタバレ防止) */
   window.__noCine=true;
   newGame('深夜のコンビニにおける財布の残高の比較','normal','佐藤');
   Object.assign(S,{chars:10300,q:60,trust:55,san:50,sleeps:4,minSan:25,marks:{cat:1,night:1,letter:1,parent:1,ai:1,breakthrough:1,novel:1}});

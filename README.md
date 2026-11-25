@@ -10,6 +10,7 @@
 - `og.png` … シェア用の画像(1200×630)。OGPタグから参照する。
 - `firebase.json` / `.firebaserc` … Firebase Hosting の設定。デプロイ前に `tools/build.js` が、公開するファイル(`index.html`・`og.png`・`cine.js`・`vendor/`・`assets/`)だけを `public/` にコピーする。
 - `.github/workflows/firebase-hosting.yml` … push時に自動で公開するワークフロー。
+- `tools/build.js` … 公開用の `public/` を作る。人物データは `.glb` から、Firebaseが自動で圧縮する JSON 形式に変換する(1体約1.5MB→配信時に約0.8MB。1回のプレイで約4MB。無料枠の1日360MBで、約90人分)。
 - `tools/set-url.js` … 公開URL(OGP・シェア文・FirebaseのプロジェクトID)を一括で差し替える。
 - `tools/balance.js` … 自動プレイでエンディングの出現率を測る(Playwright)。`node tools/balance.js 300`
 - `tools/og.html`, `tools/og.js` … `og.png` の元と書き出しスクリプト。`node tools/og.js`
@@ -56,7 +57,7 @@ GitHub Pages など別の場所でも、`index.html` をそのまま置けば動
   - `neko` 猫が卒業:猫の入力を採用した / `uchu` 星間査読:午前2時に乗った / `letter` ラブレター受理:ラブレターを書いた
   - `okan` 母が代理提出:母に長文を返信した / `aigrad` AIが首席卒業:AIに全部書かせた / `nobel` 世紀の大発見(誤):実験で予想と真逆の結果が出た
   - `nature` ネイチャー掲載:「新規性がある」ことにして、研究の質も60以上
-  - 確認用に、URLの末尾へ `#preview-neko` などを付けると結果画面だけ見られる(図鑑には記録されない)。公開時に消すなら、`index.html` 末尾の `#preview-` の即時関数を削除。
+  - 確認用に、URLの末尾へ `#preview-neko` などを付けると結果画面だけ見られる(図鑑には記録されない)。本番のURL(`CANON_URL`のホスト)では無効。確認用チャンネルやローカルでは使える。公開時に消すなら、`index.html` 末尾の `#preview-` の即時関数を削除。
 - 模擬卒論はゲーム内のテンプレートと語彙だけで作る(AI不要)。内容・数値・文献はすべて架空。
 - プレイ中の事件(猫の入力、AIに丸投げ、先輩の卒論、徹夜、エナドリ、Wordフリーズなど)は `mark()` で記録され、模擬卒論に痕跡として残る。痕跡の量が「カオス度」(0〜5)になり、3以上で誤字、4以上で章の入れ替わり、5でタイトル崩壊。処理は `chaosify()`。
 - 恋人・親とのトークやラブレターも、イベントの選択(またはカオス度4以上のクリップボード事故)で卒論に紛れ込む。文面は `TH_LOVER` / `TH_PARENT` / `TH_LETTER`。
